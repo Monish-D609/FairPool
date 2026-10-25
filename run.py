@@ -10,8 +10,15 @@ Usage:
 """
 
 import sys
+import os
 import argparse
 import uvicorn
+
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 
 def run_benchmark(requests: int = 35, offers: int = 15, seed: int = 42):
@@ -49,7 +56,7 @@ def run_tests():
 
 def start_server(host: str = "127.0.0.1", port: int = 8000, reload: bool = False):
     print("=" * 80)
-    print("🚗⚡ STARTING FAIRPOOL APPLICATION SERVER")
+    print("[*] STARTING FAIRPOOL APPLICATION SERVER")
     print(f"URL: http://{host}:{port}")
     print("Access the Bento Box Mobility Dashboard & Interactive Algorithm Visualizer")
     print("=" * 80)
