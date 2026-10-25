@@ -147,7 +147,18 @@ python run.py --benchmark --seed 42 --requests 35 --offers 15
 ```bash
 python run.py --test
 # or: pytest tests/
-```
+### 4. Deploy to Vercel (Zero-Config Serverless)
+FairPool is fully pre-configured for instant **Vercel** serverless deployment:
+- **FastAPI Backend:** Runs serverless via `@vercel/python` on `api/index.py`.
+- **Bento Box UI:** Served via Vercel's Edge CDN from `public/`.
+- **Routing:** Handled via `vercel.json` rewrites.
+
+To deploy your own live instance:
+1. Push your changes to GitHub (already linked to `https://github.com/Monish-D609/FairPool`).
+2. Go to [vercel.com](https://vercel.com/) and click **"Add New Project"**.
+3. Import your **`FairPool`** repository.
+4. Leave all build settings as default (Framework Preset: **Other**, Root Directory: `./`).
+5. Click **"Deploy"**!
 
 ---
 
@@ -161,6 +172,8 @@ FairPool/
 │   ├── REQUIREMENTS.md         # SRS & URS functional mapping
 │   ├── ROADMAP.md              # Milestone roadmap & progress
 │   └── STATE.md                # Project memory state
+├── api/
+│   └── index.py                # Vercel Serverless Function entrypoint
 ├── fairpool/                   # Core Python Algorithmic Package
 │   ├── core/
 │   │   ├── models.py           # RiderRequest, DriverOffer, Trip, BatchMatchResult
@@ -177,15 +190,18 @@ FairPool/
 │   │   └── benchmark.py        # Reproducible 4-way evaluation harness
 │   └── api/
 │       └── app.py              # FastAPI REST endpoints & static file server
-├── web/                        # Bento Box Frontend (HTML5 / Vanilla CSS & JS)
+├── public/                     # Static Edge Assets for Vercel CDN
 │   ├── index.html              # Bento Box grid structure & operations panel
 │   ├── style.css               # Transportation Slate-Navy UI theme
 │   └── app.js                  # Canvas visualizer & reactive controller
-├── tests/                      # Automated Verification Suite
+├── web/                        # Local Web Assets
+├── tests/                      # Automated Verification Suite (15/15 passing)
+│   ├── test_api.py             # Domain checks, cancellations & CSV export tests
 │   ├── test_graph.py           # Dijkstra, Haversine & triangle inequality tests
 │   ├── test_matching.py        # Feasibility, precedence & uniqueness invariant tests
 │   ├── test_fairness.py        # Gini extremes & dynamic penalty tests
 │   └── test_benchmark.py       # Deterministic reproducibility & NFR-1 scaling tests
+├── vercel.json                 # Vercel serverless routing configuration
 ├── PRD.md                      # Product Requirements Document
 ├── SRS.md                      # Software Requirements Specification
 ├── URS.md                      # User Requirements Specification

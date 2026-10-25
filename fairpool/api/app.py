@@ -122,6 +122,15 @@ def get_network() -> Dict[str, Any]:
 @app.get("/api/state")
 def get_state() -> Dict[str, Any]:
     """Returns current system pool and match stats."""
+    # Auto-seed if brand new cold start
+    if not requests_pool and not offers_pool:
+        gen = CommuterDatasetGenerator(road_net, seed=42)
+        reqs, offs = gen.generate_commute_batch(num_requests=25, num_offers=12)
+        requests_pool.extend(reqs)
+        offers_pool.extend(offs)
+        for o in offs:
+            fairness_ledger.register_driver(o.driver_id, 0.0)
+
     mean_hist_detour = fairness_ledger.get_group_mean_detour()
     gini = fairness_ledger.get_cohort_gini()
 
@@ -242,7 +251,12 @@ def run_match(opts: MatchOptions) -> Dict[str, Any]:
     """Runs matching algorithm on current batch pool."""
     global latest_match_result
     if not requests_pool or not offers_pool:
-        raise HTTPException(status_code=400, detail="Requests or offers pool is empty")
+        gen = CommuterDatasetGenerator(road_net, seed=42)
+        reqs, offs = gen.generate_commute_batch(num_requests=25, num_offers=12)
+        requests_pool.extend(reqs)
+        offers_pool.extend(offs)
+        for o in offs:
+            fairness_ledger.register_driver(o.driver_id, 0.0)
 
     if opts.algorithm == "no_pool":
         matcher = NoPoolingBaseline(road_net)
@@ -357,7 +371,10 @@ def reset_system() -> Dict[str, Any]:
     return {"message": "System state successfully reset"}
 
 
-# Serve static web files if web directory exists
-web_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "web")
-if os.path.exists(web_dir):
-    app.mount("/", StaticFiles(directory=web_dir, html=True), name="static")
+# Serve static web files if public or web directory exists
+root_project_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+public_dir = os.path.join(root_project_dir, "public")
+web_dir = os.path.join(root_project_dir, "web")
+static_dir = public_dir if os.path.exists(public_dir) else web_dir
+if os.path.exists(static_dir):
+    app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
