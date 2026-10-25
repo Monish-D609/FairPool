@@ -2,24 +2,27 @@
 
 [![Design & Analysis of Algorithms](https://img.shields.io/badge/Course-Design%20%26%20Analysis%20of%20Algorithms-blue)](https://github.com/Monish-D609/FairPool)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![UI: Bento Box Grid](https://img.shields.io/badge/UI-Bento%20Box%20Grid-10B981.svg)](https://github.com/Monish-D609/FairPool)
-[![Tests: 10 Passed](https://img.shields.io/badge/Tests-10%20Passed-brightgreen.svg)](https://github.com/Monish-D609/FairPool)
+[![Frontend: React 19 + TypeScript](https://img.shields.io/badge/Frontend-React%2019%20%2B%20TypeScript-61DAFB.svg)](https://github.com/Monish-D609/FairPool)
+[![Map Engine: Google Maps](https://img.shields.io/badge/Map%20Engine-Google%20Maps-4285F4.svg)](https://github.com/Monish-D609/FairPool)
+[![Tests: 15 Passed](https://img.shields.io/badge/Tests-15%20Passed-brightgreen.svg)](https://github.com/Monish-D609/FairPool)
 
-> **Algorithmic carpool & ride-pooling matching platform for university campuses and corporate workplaces.**  
-> Built with **Shareability Graphs**, **Precedence-Constrained Permutation Enumeration**, **Set-Packing Solvers (Exact ILP & High-Speed Heuristic)**, and **Dynamic Detour Fairness Balancing (Gini Index Optimization)**.
+> **Algorithmic carpool & ride-pooling matching platform for metropolitan city-to-campus peak-hour commutes.**  
+> Built with **Shareability Graphs**, **Precedence-Constrained Permutation Enumeration**, **Set-Packing Solvers (Exact ILP & High-Speed Heuristic)**, **Dynamic Detour Fairness Balancing (Gini Index Optimization)**, **React 19 + TypeScript frontend**, and **interactive Google Maps Engine**.
 
 ---
 
 ## 📌 1. The Real-World Problem & Impact
 
-Single-occupancy vehicle commutes to university campuses and corporate tech parks produce severe parking bottlenecks, traffic congestion, and wasted fuel emissions. While commercial ride-hailing tools route individual vehicles, they fail in group commute contexts. Informal carpooling (chat groups, spreadsheets) invariably collapses because **the same altruistic drivers disproportionately absorb detours**, leading to driver churn.
+The daily peak-hour commute from residential suburbs across a metropolis into major educational campuses and research corridors (e.g. commuters from Tambaram, Porur, Anna Nagar, Velachery, or OMR heading into IIT Madras, Anna University, or Tidel Park) produces severe traffic bottlenecks, parking crises, and carbon emissions.
+
+While commercial ride-hailing services route individuals at high cost, informal carpooling collapsed because **altruistic drivers disproportionately absorb detours**, leading to rapid driver burnout.
 
 ### The FairPool Solution
-FairPool models commute ride-pooling as a formal combinatorial optimization problem:
+FairPool models city-to-campus ride-pooling as a formal combinatorial optimization problem:
 1. **Guarantees bounded inconvenience:** Riders never exceed their personal detour tolerance ($\le \delta_i$).
-2. **Maximizes systemic savings:** Saves over **35% of total vehicle-kilometers** compared to solo commutes—more than double greedy pairing algorithms.
-3. **Enforces dynamic fairness:** Actively tracks cumulative driver detours across rolling epochs, rotating detours and reducing the **Gini disparity coefficient** to prevent driver burnout.
+2. **Maximizes systemic savings:** Saves over **30-35% of total vehicle-kilometers** compared to solo commutes.
+3. **Enforces dynamic fairness:** Actively tracks cumulative driver detours across rolling epochs, rotating detours and reducing the **Gini disparity coefficient** to prevent driver churn.
+4. **Google Maps Visualizer:** Renders real geographic road corridors, multi-stop carpool routes with turn-by-turn stop itineraries, and instant deep-links to live Google Maps driving navigation.
 
 ---
 

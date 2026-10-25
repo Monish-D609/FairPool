@@ -23,10 +23,10 @@ def test_api_domain_verification_fr1():
     # Valid campus email domain
     valid_payload = {
         "rider_id": "scholar@campus.edu",
-        "origin_id": "METRO_EAST",
-        "destination_id": "CS_BLOCK",
+        "origin_id": "TAMBARAM",
+        "destination_id": "IIT_MADRAS",
         "earliest_departure": 0.0,
-        "latest_arrival": 30.0,
+        "latest_arrival": 45.0,
         "max_detour_ratio": 0.35,
     }
     res_valid = client.post("/api/requests", json=valid_payload)
@@ -35,10 +35,10 @@ def test_api_domain_verification_fr1():
     # Invalid public external domain
     invalid_payload = {
         "rider_id": "intruder@unauthorized-domain.com",
-        "origin_id": "METRO_EAST",
-        "destination_id": "CS_BLOCK",
+        "origin_id": "TAMBARAM",
+        "destination_id": "IIT_MADRAS",
         "earliest_departure": 0.0,
-        "latest_arrival": 30.0,
+        "latest_arrival": 45.0,
         "max_detour_ratio": 0.35,
     }
     res_invalid = client.post("/api/requests", json=invalid_payload)
@@ -49,10 +49,10 @@ def test_api_cancellation_fr6():
     # Submit request
     payload = {
         "rider_id": "cancel_test@campus.edu",
-        "origin_id": "METRO_EAST",
-        "destination_id": "CS_BLOCK",
+        "origin_id": "TAMBARAM",
+        "destination_id": "IIT_MADRAS",
         "earliest_departure": 5.0,
-        "latest_arrival": 35.0,
+        "latest_arrival": 45.0,
         "max_detour_ratio": 0.35,
     }
     post_res = client.post("/api/requests", json=payload)

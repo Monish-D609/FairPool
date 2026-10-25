@@ -13,25 +13,25 @@ from fairpool.algorithms.engine import FairPoolEngine
 
 def test_pairwise_feasibility():
     net = create_default_campus_network()
-    # Offer: Metro -> CS Block (leaves at min 0)
+    # Offer: Tambaram -> IIT Madras (leaves at min 0)
     offer = DriverOffer(
         id="off_test1",
         driver_id="drv1",
-        origin_id="METRO_EAST",
-        destination_id="CS_BLOCK",
+        origin_id="TAMBARAM",
+        destination_id="IIT_MADRAS",
         departure_time=0.0,
         capacity=3,
         max_driver_detour_min=15.0,
     )
 
-    # Rider: Metro -> CS Block (compatible direct route)
+    # Rider: Tambaram -> IIT Madras (compatible direct route)
     req1 = RiderRequest(
         id="req_test1",
         rider_id="r1",
-        origin_id="METRO_EAST",
-        destination_id="CS_BLOCK",
+        origin_id="TAMBARAM",
+        destination_id="IIT_MADRAS",
         earliest_departure=0.0,
-        latest_arrival=30.0,
+        latest_arrival=45.0,
         max_detour_ratio=0.5,
     )
 

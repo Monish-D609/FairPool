@@ -1,7 +1,9 @@
 """
-FairPool: Road Network & Travel Time Engine
+FairPool: Road Network & Travel Time Engine (Chennai Metropolitan Corridor)
 Provides shortest path calculations, Dijkstra's algorithm, Haversine distance,
-and a realistic campus + commuter corridor network topology.
+and a realistic Chennai Metropolitan commute network linking residential suburbs
+(Tambaram, Porur, Anna Nagar, Velachery, OMR, etc.) to destination campus hubs
+(IIT Madras, Anna University, Tidel Park).
 """
 
 from __future__ import annotations
@@ -27,12 +29,12 @@ def haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) ->
 
 class RoadNetwork:
     """
-    Weighted directed road network graph G = (V, E, W)
-    Supports shortest-path travel time queries t(u, v) using Dijkstra's algorithm
-    and precomputed all-pairs shortest paths for fast batch lookups.
+    Weighted directed road network graph G = (V, E, W).
+    Supports shortest-path travel time queries t(u, v) using Dijkstra's algorithm,
+    precomputed all-pairs shortest paths, and dynamic point-to-point queries.
     """
 
-    def __init__(self, avg_speed_kmh: float = 30.0):
+    def __init__(self, avg_speed_kmh: float = 32.0):
         self.avg_speed_kmh = avg_speed_kmh
         self.nodes: Dict[str, Location] = {}
         # adjacency: u -> [(v, distance_km, speed_kmh, travel_time_min)]
@@ -56,31 +58,28 @@ class RoadNetwork:
             self.nodes[u].lat, self.nodes[u].lng,
             self.nodes[v].lat, self.nodes[v].lng
         )
-        # travel time in minutes: (dist / speed) * 60
-        travel_time_min = (dist_km / max(speed, 5.0)) * 60.0
+        # Factor road circuity (1.25x direct geodesic for city roads)
+        road_dist_km = dist_km * 1.25
+        travel_time_min = (road_dist_km / max(speed, 10.0)) * 60.0
 
-        self.adj[u].append((v, dist_km, speed, travel_time_min))
+        self.adj[u].append((v, road_dist_km, speed, travel_time_min))
         if bidirectional:
-            self.adj[v].append((u, dist_km, speed, travel_time_min))
+            self.adj[v].append((u, road_dist_km, speed, travel_time_min))
 
     def dijkstra(self, source: str) -> Tuple[Dict[str, float], Dict[str, float]]:
-        """
-        Dijkstra's shortest path from source to all reachable nodes.
-        Returns:
-            (dist_dict, time_dict)
-        """
+        """Dijkstra's shortest path from source to all reachable nodes."""
         dist: Dict[str, float] = {node: float('inf') for node in self.nodes}
         times: Dict[str, float] = {node: float('inf') for node in self.nodes}
 
+        if source not in self.nodes:
+            return dist, times
+
         dist[source] = 0.0
         times[source] = 0.0
-
-        # priority queue stores (current_time, node)
         pq: List[Tuple[float, str]] = [(0.0, source)]
 
         while pq:
             curr_time, u = heapq.heappop(pq)
-
             if curr_time > times[u]:
                 continue
 
@@ -105,24 +104,48 @@ class RoadNetwork:
         if u == v:
             return 0.0
         if (u, v) in self._time_matrix:
-            return self._time_matrix[(u, v)]
-        _, time_map = self.dijkstra(u)
-        t = time_map.get(v, float('inf'))
-        self._time_matrix[(u, v)] = t
-        return t
+            cached = self._time_matrix[(u, v)]
+            if cached < float('inf'):
+                return cached
+
+        if u in self.nodes and v in self.nodes:
+            _, time_map = self.dijkstra(u)
+            t = time_map.get(v, float('inf'))
+            if t < float('inf'):
+                self._time_matrix[(u, v)] = t
+                return t
+
+            # Fallback to geodesic estimate if disconnected
+            dist = self.distance_km(u, v)
+            return (dist / self.avg_speed_kmh) * 60.0
+
+        # Arbitrary coordinate point fallback
+        return 15.0
 
     def distance_km(self, u: str, v: str) -> float:
         if u == v:
             return 0.0
         if (u, v) in self._distance_matrix:
-            return self._distance_matrix[(u, v)]
-        dist_map, _ = self.dijkstra(u)
-        d = dist_map.get(v, float('inf'))
-        self._distance_matrix[(u, v)] = d
-        return d
+            cached = self._distance_matrix[(u, v)]
+            if cached < float('inf'):
+                return cached
+
+        if u in self.nodes and v in self.nodes:
+            dist_map, _ = self.dijkstra(u)
+            d = dist_map.get(v, float('inf'))
+            if d < float('inf'):
+                self._distance_matrix[(u, v)] = d
+                return d
+            # Fallback to direct haversine
+            return haversine_distance_km(
+                self.nodes[u].lat, self.nodes[u].lng,
+                self.nodes[v].lat, self.nodes[v].lng
+            ) * 1.25
+
+        return 10.0
 
     def to_dict(self) -> Dict:
-        """Serializes network for front-end rendering."""
+        """Serializes network for front-end Google Map rendering."""
         edges = []
         seen = set()
         for u, neighbors in self.adj.items():
@@ -133,11 +156,13 @@ class RoadNetwork:
                     edges.append({
                         "from": u,
                         "to": v,
-                        "distance_km": round(dist, 3),
+                        "distance_km": round(dist, 2),
                         "speed_kmh": speed,
                         "travel_time_min": round(travel_time, 2),
                     })
         return {
+            "city": "Chennai",
+            "center": {"lat": 13.0067, "lng": 80.2200},
             "nodes": [loc.to_dict() for loc in self.nodes.values()],
             "edges": edges,
         }
@@ -145,59 +170,87 @@ class RoadNetwork:
 
 def create_default_campus_network() -> RoadNetwork:
     """
-    Creates a rich, realistic University Campus & Suburban Commuter Corridor.
-    Coordinates centered around an academic cluster:
-    - Academic Core: Central Admin, CS Block, Engineering Quad, Main Library, Science Arena
-    - Residential & Hostels: North Hostels, South Hostels, Scholar Housing
-    - Commuter Origins: East Metro Station, Tech Park Crossing, West Suburb Hub, Riverdale Heights
+    Creates the Chennai Metropolitan City-to-Campus Commuter Corridor.
+    Central Academic & Tech Hubs:
+      - IIT Madras (Main Academic Core)
+      - Anna University (Guindy Campus)
+      - Tidel Park (OMR Technology Center)
+    City Residential Origin Clusters across Chennai:
+      - Tambaram, Chromepet, Porur, Anna Nagar, Kilpauk, Nungambakkam,
+        T. Nagar, Alwarpet, Velachery, Medavakkam, Adyar, Thiruvanmiyur,
+        Perungudi, Sholinganallur, Siruseri, Guindy.
     """
     net = RoadNetwork(avg_speed_kmh=35.0)
 
-    # Campus Core Nodes
-    net.add_node("ADMIN", "Central Admin Building", 12.9716, 77.5946, is_campus_hub=True)
-    net.add_node("CS_BLOCK", "Computer Science Complex", 12.9735, 77.5975, is_campus_hub=True)
-    net.add_node("ENG_QUAD", "Engineering Quadrangle", 12.9695, 77.5980, is_campus_hub=True)
-    net.add_node("LIBRARY", "Central University Library", 12.9725, 77.5910, is_campus_hub=True)
-    net.add_node("SCI_ARENA", "Science & Innovation Arena", 12.9760, 77.5935, is_campus_hub=True)
+    # Destination Academic / Corporate Hubs
+    net.add_node("IIT_MADRAS", "IIT Madras Academic Complex", 12.9915, 80.2337, is_campus_hub=True)
+    net.add_node("ANNA_UNIV", "Anna University (Guindy)", 13.0110, 80.2354, is_campus_hub=True)
+    net.add_node("TIDEL_PARK", "Tidel Park / OMR Hub", 12.9892, 80.2486, is_campus_hub=True)
 
-    # Student Hostels & On-Campus Housing
-    net.add_node("HOSTEL_N", "North Student Residences", 12.9810, 77.5920, is_campus_hub=False)
-    net.add_node("HOSTEL_S", "South Student Residences", 12.9640, 77.5960, is_campus_hub=False)
-    net.add_node("STAFF_QTRS", "Faculty & Staff Quarters", 12.9680, 77.5870, is_campus_hub=False)
+    # South Chennai Suburban Ingress (GST Road Corridor)
+    net.add_node("TAMBARAM", "Tambaram Railway Gateway", 12.9249, 80.1000, is_campus_hub=False)
+    net.add_node("CHROMEPET", "Chromepet GST Road", 12.9516, 80.1462, is_campus_hub=False)
+    net.add_node("GUINDY", "Guindy Kathipara Interchange", 13.0067, 80.2030, is_campus_hub=False)
 
-    # Major Commuter Ingress & Suburban Gateways
-    net.add_node("METRO_EAST", "East Metro Interchange", 12.9720, 77.6150, is_campus_hub=False)
-    net.add_node("TECH_PARK", "Tech Park Junction", 12.9850, 77.6100, is_campus_hub=False)
-    net.add_node("WEST_SUBURB", "West Suburb Transit Hub", 12.9650, 77.5750, is_campus_hub=False)
-    net.add_node("RIVERDALE", "Riverdale Residential Circle", 12.9550, 77.5890, is_campus_hub=False)
-    net.add_node("NORTH_GATE", "Campus Main North Gate", 12.9780, 77.5950, is_campus_hub=True)
-    net.add_node("SOUTH_GATE", "Campus South Security Gate", 12.9660, 77.5930, is_campus_hub=True)
+    # South-East IT Corridor (OMR / ECR)
+    net.add_node("SIRUSERI", "Siruseri SIPCOT IT Park", 12.8270, 80.2190, is_campus_hub=False)
+    net.add_node("SHOLINGANALLUR", "Sholinganallur Junction", 12.9010, 80.2279, is_campus_hub=False)
+    net.add_node("PERUNGUDI", "Perungudi OMR Toll", 12.9654, 80.2461, is_campus_hub=False)
+    net.add_node("THIRUVANMIYUR", "Thiruvanmiyur ECR Ingress", 12.9830, 80.2590, is_campus_hub=False)
+    net.add_node("ADYAR", "Adyar Circle", 13.0012, 80.2565, is_campus_hub=False)
 
-    # Campus Arteries (Inner Ring)
-    net.add_edge("ADMIN", "CS_BLOCK", speed_kmh=25.0)
-    net.add_edge("ADMIN", "LIBRARY", speed_kmh=25.0)
-    net.add_edge("ADMIN", "ENG_QUAD", speed_kmh=25.0)
-    net.add_edge("CS_BLOCK", "ENG_QUAD", speed_kmh=25.0)
-    net.add_edge("CS_BLOCK", "SCI_ARENA", speed_kmh=25.0)
-    net.add_edge("SCI_ARENA", "NORTH_GATE", speed_kmh=30.0)
-    net.add_edge("LIBRARY", "STAFF_QTRS", speed_kmh=30.0)
-    net.add_edge("ENG_QUAD", "SOUTH_GATE", speed_kmh=30.0)
+    # Central & South-Central Residential Districts
+    net.add_node("VELACHERY", "Velachery Transit Hub", 12.9800, 80.2200, is_campus_hub=False)
+    net.add_node("MEDAVAKKAM", "Medavakkam Suburb Center", 12.9171, 80.1923, is_campus_hub=False)
+    net.add_node("T_NAGAR", "T. Nagar Panagal Park", 13.0418, 80.2341, is_campus_hub=False)
+    net.add_node("ALWARPET", "Alwarpet TTK Road", 13.0334, 80.2520, is_campus_hub=False)
 
-    # Hostel connections
-    net.add_edge("NORTH_GATE", "HOSTEL_N", speed_kmh=35.0)
-    net.add_edge("SOUTH_GATE", "HOSTEL_S", speed_kmh=35.0)
-    net.add_edge("STAFF_QTRS", "SOUTH_GATE", speed_kmh=30.0)
+    # West & North-West Residential Corridors
+    net.add_node("PORUR", "Porur Tollway & Lake", 13.0382, 80.1565, is_campus_hub=False)
+    net.add_node("ANNA_NAGAR", "Anna Nagar Tower Circle", 13.0850, 80.2100, is_campus_hub=False)
+    net.add_node("KILPAUK", "Kilpauk EVR Periyar Salai", 13.0784, 80.2412, is_campus_hub=False)
+    net.add_node("NUNGAMBAKKAM", "Nungambakkam High Road", 13.0595, 80.2425, is_campus_hub=False)
 
-    # External Commute Expressways & Arterials
-    net.add_edge("CS_BLOCK", "METRO_EAST", speed_kmh=45.0)
-    net.add_edge("METRO_EAST", "TECH_PARK", speed_kmh=50.0)
-    net.add_edge("TECH_PARK", "NORTH_GATE", speed_kmh=40.0)
-    net.add_edge("LIBRARY", "WEST_SUBURB", speed_kmh=45.0)
-    net.add_edge("WEST_SUBURB", "RIVERDALE", speed_kmh=45.0)
-    net.add_edge("RIVERDALE", "SOUTH_GATE", speed_kmh=40.0)
-    net.add_edge("HOSTEL_N", "TECH_PARK", speed_kmh=40.0)
-    net.add_edge("HOSTEL_S", "RIVERDALE", speed_kmh=35.0)
+    # Connect Highway & Arterial Edges
+    # 1. GST Road Arterial Corridor
+    net.add_edge("TAMBARAM", "CHROMEPET", speed_kmh=45.0)
+    net.add_edge("CHROMEPET", "GUINDY", speed_kmh=45.0)
+    net.add_edge("GUINDY", "IIT_MADRAS", speed_kmh=35.0)
+    net.add_edge("GUINDY", "ANNA_UNIV", speed_kmh=35.0)
 
-    # Precompute all pairs shortest paths for instant lookups
+    # 2. OMR IT Expressway Corridor
+    net.add_edge("SIRUSERI", "SHOLINGANALLUR", speed_kmh=50.0)
+    net.add_edge("SHOLINGANALLUR", "PERUNGUDI", speed_kmh=45.0)
+    net.add_edge("PERUNGUDI", "TIDEL_PARK", speed_kmh=40.0)
+    net.add_edge("TIDEL_PARK", "IIT_MADRAS", speed_kmh=30.0)
+
+    # 3. Velachery & Medavakkam Arterials
+    net.add_edge("MEDAVAKKAM", "VELACHERY", speed_kmh=40.0)
+    net.add_edge("VELACHERY", "IIT_MADRAS", speed_kmh=30.0)
+    net.add_edge("VELACHERY", "GUINDY", speed_kmh=35.0)
+    net.add_edge("VELACHERY", "TIDEL_PARK", speed_kmh=35.0)
+
+    # 4. Coastal / Adyar / ECR Arterials
+    net.add_edge("THIRUVANMIYUR", "ADYAR", speed_kmh=35.0)
+    net.add_edge("THIRUVANMIYUR", "TIDEL_PARK", speed_kmh=35.0)
+    net.add_edge("ADYAR", "IIT_MADRAS", speed_kmh=30.0)
+    net.add_edge("ADYAR", "ANNA_UNIV", speed_kmh=30.0)
+
+    # 5. Central Chennai Corridors (Kilpauk -> Nungambakkam -> T. Nagar -> Alwarpet -> IIT)
+    net.add_edge("KILPAUK", "NUNGAMBAKKAM", speed_kmh=30.0)
+    net.add_edge("NUNGAMBAKKAM", "T_NAGAR", speed_kmh=30.0)
+    net.add_edge("T_NAGAR", "ALWARPET", speed_kmh=30.0)
+    net.add_edge("ALWARPET", "ANNA_UNIV", speed_kmh=35.0)
+    net.add_edge("ANNA_UNIV", "IIT_MADRAS", speed_kmh=30.0)
+
+    # 6. West Corridor (Anna Nagar -> Porur -> Guindy)
+    net.add_edge("ANNA_NAGAR", "PORUR", speed_kmh=40.0)
+    net.add_edge("ANNA_NAGAR", "NUNGAMBAKKAM", speed_kmh=35.0)
+    net.add_edge("PORUR", "GUINDY", speed_kmh=40.0)
+
+    # 7. Cross-connecting Links
+    net.add_edge("SHOLINGANALLUR", "MEDAVAKKAM", speed_kmh=40.0)
+    net.add_edge("T_NAGAR", "GUINDY", speed_kmh=35.0)
+
     net.compute_all_pairs()
     return net
