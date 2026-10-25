@@ -1,0 +1,19 @@
+{
+  "project_name": "FairPool",
+  "version": "1.0.0",
+  "domain": "Algorithms / Ride-Pooling Optimization",
+  "workflow": "GSD",
+  "auto_advance": true,
+  "commit_prefix": "feat:",
+  "model_profile": "gemini",
+  "design_system": {
+    "style": "bento-box-grid / data-dense-dashboard",
+    "theme": "dark",
+    "palette": "Ride Hailing / Transportation (Slate-Navy / Electric Blue / Emerald)",
+    "fonts": {
+      "heading": "Outfit",
+      "body": "DM Sans",
+      "mono": "Fira Code"
+    }
+  }
+}
