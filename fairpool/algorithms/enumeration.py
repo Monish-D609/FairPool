@@ -5,7 +5,7 @@ Uses subset-feasibility pruning on the shareability graph and optimized recursiv
 """
 
 from __future__ import annotations
-from typing import List, Dict, Set, Tuple, Optional
+from typing import List, Dict, Set, Tuple, Optional, Any
 from itertools import combinations
 from fairpool.core.models import (
     RiderRequest,
@@ -111,7 +111,6 @@ class TripEnumerator:
                         leg_dist = self.road_net.distance_km(curr_loc, req.origin_id)
                         leg_time = self.road_net.travel_time_min(curr_loc, req.origin_id)
                         arr_time = curr_time + leg_time
-                        # Wait if arrived early
                         act_time = max(arr_time, req.earliest_departure)
 
                         # Detour quick check to destination
@@ -230,19 +229,35 @@ class TripEnumerator:
         )
 
     def enumerate_candidate_trips(
-        self, requests: List[RiderRequest], offers: List[DriverOffer], max_capacity_cap: int = 4
+        self,
+        requests: List[RiderRequest],
+        offers: List[DriverOffer],
+        max_capacity_cap: int = 4,
+        max_candidates_per_vehicle: int = 10,
     ) -> List[Trip]:
         """
         Enumerates all candidate trips across all vehicles up to vehicle capacity.
         Applies subset-feasibility pruning using the shareability graph.
+        Prioritizes the most compatible requests per vehicle for high performance.
         """
         req_by_id = {r.id: r for r in requests}
         all_candidate_trips: List[Trip] = []
 
         for offer in offers:
-            cand_requests = list(self.sg.vehicle_request_edges.get(offer.id, set()))
-            if not cand_requests:
+            raw_cand_requests = list(self.sg.vehicle_request_edges.get(offer.id, set()))
+            if not raw_cand_requests:
                 continue
+
+            # Sort requests by proximity to driver origin & destination
+            def detour_heuristic(r_id: str) -> float:
+                req = req_by_id[r_id]
+                return (
+                    self.road_net.distance_km(offer.origin_id, req.origin_id) +
+                    self.road_net.distance_km(req.destination_id, offer.destination_id)
+                )
+
+            cand_requests = sorted(raw_cand_requests, key=detour_heuristic)[:max_candidates_per_vehicle]
+            cand_set = set(cand_requests)
 
             eff_cap = min(offer.capacity, max_capacity_cap)
 
@@ -253,7 +268,10 @@ class TripEnumerator:
                     all_candidate_trips.append(trip)
 
             # 2. Size 2 trips (from shareability pair edges)
-            pair_edges = self.sg.vehicle_pair_edges.get(offer.id, set())
+            pair_edges = [
+                pair for pair in self.sg.vehicle_pair_edges.get(offer.id, set())
+                if pair.issubset(cand_set)
+            ]
             for pair in pair_edges:
                 r1_id, r2_id = list(pair)
                 trip = self.find_best_trip_for_group(offer, [req_by_id[r1_id], req_by_id[r2_id]])
@@ -262,25 +280,27 @@ class TripEnumerator:
 
             # 3. Size 3 trips (pruned: all 3 sub-pairs must be feasible)
             if eff_cap >= 3 and len(cand_requests) >= 3:
+                pair_set = set(pair_edges)
                 for triplet in combinations(cand_requests, 3):
                     p1 = frozenset([triplet[0], triplet[1]])
                     p2 = frozenset([triplet[1], triplet[2]])
                     p3 = frozenset([triplet[0], triplet[2]])
-                    if p1 in pair_edges and p2 in pair_edges and p3 in pair_edges:
+                    if p1 in pair_set and p2 in pair_set and p3 in pair_set:
                         group = [req_by_id[r_id] for r_id in triplet]
                         trip = self.find_best_trip_for_group(offer, group)
                         if trip:
                             all_candidate_trips.append(trip)
 
-            # 4. Size 4 trips (pruned: all sub-triplets feasible)
+            # 4. Size 4 trips (pruned: sub-triplets feasible)
             if eff_cap >= 4 and len(cand_requests) >= 4:
+                pair_set = set(pair_edges)
                 for quad in combinations(cand_requests, 4):
                     sub_triplets_valid = True
                     for triplet in combinations(quad, 3):
                         p1 = frozenset([triplet[0], triplet[1]])
                         p2 = frozenset([triplet[1], triplet[2]])
                         p3 = frozenset([triplet[0], triplet[2]])
-                        if not (p1 in pair_edges and p2 in pair_edges and p3 in pair_edges):
+                        if not (p1 in pair_set and p2 in pair_set and p3 in pair_set):
                             sub_triplets_valid = False
                             break
                     if sub_triplets_valid:
