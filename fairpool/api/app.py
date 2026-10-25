@@ -1,17 +1,20 @@
 """
 FairPool: FastAPI Application & REST Service
 Exposes endpoints for road network, commuter requests/offers,
-batch matching, live benchmark harness, and static frontend serving.
+batch matching, live benchmark harness, anonymized CSV export (FR-20),
+cancellation handling (FR-6, FR-15), and institutional domain verification (FR-1).
 """
 
 from __future__ import annotations
 import os
+import io
+import csv
 import copy
 from typing import List, Dict, Any, Optional
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from fairpool.core.models import RiderRequest, DriverOffer, Trip, BatchMatchResult
 from fairpool.core.graph import RoadNetwork, create_default_campus_network
@@ -35,6 +38,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Allowed Institutional Email Domains (FR-1)
+ALLOWED_DOMAINS = ["campus.edu", "university.ac.in", "office.org", "fairpool.local"]
+
 # Global Simulation & System State
 road_net: RoadNetwork = create_default_campus_network()
 fairness_ledger: FairnessEngine = FairnessEngine(enable_fairness=True)
@@ -46,7 +52,16 @@ latest_match_result: Optional[BatchMatchResult] = None
 match_history: List[BatchMatchResult] = []
 
 
-# Pydantic Request Schemas
+def validate_institutional_email(email: str) -> bool:
+    """Verifies that an email belongs to an allowed organization domain (FR-1)."""
+    if "@" not in email:
+        # Allow internal mock IDs like rider_u001
+        return True
+    domain = email.split("@")[-1].lower()
+    return any(domain == d or domain.endswith("." + d) for d in ALLOWED_DOMAINS)
+
+
+# Pydantic Request Schemas with Domain Validation (FR-1)
 class CreateRiderRequest(BaseModel):
     rider_id: str
     origin_id: str
@@ -54,6 +69,15 @@ class CreateRiderRequest(BaseModel):
     earliest_departure: float
     latest_arrival: float
     max_detour_ratio: float = 0.35
+
+    @field_validator("rider_id")
+    @classmethod
+    def check_email_domain(cls, v: str) -> str:
+        if "@" in v and not validate_institutional_email(v):
+            raise ValueError(
+                f"Email domain not permitted. Must belong to an authorized institution: {', '.join(ALLOWED_DOMAINS)}"
+            )
+        return v
 
 
 class CreateDriverOffer(BaseModel):
@@ -63,6 +87,15 @@ class CreateDriverOffer(BaseModel):
     departure_time: float
     capacity: int = 3
     max_driver_detour_min: float = 18.0
+
+    @field_validator("driver_id")
+    @classmethod
+    def check_email_domain(cls, v: str) -> str:
+        if "@" in v and not validate_institutional_email(v):
+            raise ValueError(
+                f"Email domain not permitted. Must belong to an authorized institution: {', '.join(ALLOWED_DOMAINS)}"
+            )
+        return v
 
 
 class MatchOptions(BaseModel):
@@ -103,12 +136,13 @@ def get_state() -> Dict[str, Any]:
         "driver_cumulative_detours": {
             k: round(v, 2) for k, v in fairness_ledger.driver_cumulative_detours.items()
         },
+        "allowed_domains": ALLOWED_DOMAINS,
     }
 
 
 @app.post("/api/requests")
 def submit_request(req_in: CreateRiderRequest) -> Dict[str, Any]:
-    """Submits a single rider request with instant route validation."""
+    """Submits a single rider request with instant route validation (FR-1, FR-4)."""
     if req_in.origin_id not in road_net.nodes or req_in.destination_id not in road_net.nodes:
         raise HTTPException(status_code=400, detail="Invalid origin or destination node ID")
 
@@ -130,9 +164,21 @@ def submit_request(req_in: CreateRiderRequest) -> Dict[str, Any]:
     return {"message": "Request submitted", "request": new_req.to_dict()}
 
 
+@app.delete("/api/requests/{request_id}")
+def cancel_request(request_id: str) -> Dict[str, Any]:
+    """Cancels a pending or matched rider request (FR-6, FR-15)."""
+    target = next((r for r in requests_pool if r.id == request_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    target.status = "CANCELLED"
+    requests_pool.remove(target)
+    return {"message": f"Request {request_id} successfully cancelled", "request_id": request_id}
+
+
 @app.post("/api/offers")
 def submit_offer(offer_in: CreateDriverOffer) -> Dict[str, Any]:
-    """Submits a single driver offer."""
+    """Submits a single driver offer (FR-1, FR-5)."""
     if offer_in.origin_id not in road_net.nodes or offer_in.destination_id not in road_net.nodes:
         raise HTTPException(status_code=400, detail="Invalid origin or destination node ID")
 
@@ -153,6 +199,18 @@ def submit_offer(offer_in: CreateDriverOffer) -> Dict[str, Any]:
     offers_pool.append(new_offer)
     fairness_ledger.register_driver(new_offer.driver_id, 0.0)
     return {"message": "Offer submitted", "offer": new_offer.to_dict()}
+
+
+@app.delete("/api/offers/{offer_id}")
+def cancel_offer(offer_id: str) -> Dict[str, Any]:
+    """Cancels an available driver offer (FR-6, FR-15)."""
+    target = next((o for o in offers_pool if o.id == offer_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="Offer not found")
+
+    target.status = "CANCELLED"
+    offers_pool.remove(target)
+    return {"message": f"Offer {offer_id} successfully cancelled", "offer_id": offer_id}
 
 
 @app.post("/api/generate-sample")
@@ -215,7 +273,7 @@ def run_match(opts: MatchOptions) -> Dict[str, Any]:
 
 @app.post("/api/benchmark")
 def run_benchmark(opts: GenerateBatchOptions) -> Dict[str, Any]:
-    """Executes multi-algorithm benchmark comparison on identical dataset."""
+    """Executes multi-algorithm benchmark comparison on identical dataset (FR-21 to FR-25)."""
     harness = BenchmarkHarness(road_net, seed=opts.seed)
     single_res = harness.run_single_batch_comparison(
         num_requests=opts.num_requests,
@@ -234,6 +292,57 @@ def run_benchmark(opts: GenerateBatchOptions) -> Dict[str, Any]:
         "multi_epoch_study": epoch_res,
         "markdown_table": harness.format_markdown_table(single_res),
     }
+
+
+@app.get("/api/export-csv")
+def export_anonymized_csv() -> Response:
+    """
+    Exports anonymized aggregate trip and matching data as CSV (FR-20, UR-C3).
+    Ensures privacy by omitting exact coordinates and user private identifiers.
+    """
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Header
+    writer.writerow([
+        "Trip_ID",
+        "Anonymized_Driver_Hash",
+        "Num_Passengers",
+        "Total_Trip_Distance_Km",
+        "Saved_Distance_Km",
+        "Driver_Detour_Min",
+        "Mean_Rider_Detour_Min",
+        "Stops_Count",
+        "Algorithm_Dispatched",
+    ])
+
+    if latest_match_result and latest_match_result.matched_trips:
+        for idx, trip in enumerate(latest_match_result.matched_trips, 1):
+            anon_driver = f"DRV_ANON_{hash(trip.driver_id) % 10000:04d}"
+            r_detours = list(trip.rider_detours_min.values())
+            mean_r_detour = sum(r_detours) / len(r_detours) if r_detours else 0.0
+
+            writer.writerow([
+                trip.id,
+                anon_driver,
+                len(trip.request_ids),
+                round(trip.total_distance_km, 2),
+                round(trip.saved_distance_km, 2),
+                round(trip.driver_detour_min, 2),
+                round(mean_r_detour, 2),
+                len(trip.stops),
+                latest_match_result.algorithm_name,
+            ])
+    else:
+        # If no trips matched yet, provide empty row
+        writer.writerow(["NO_DATA", "N/A", 0, 0.0, 0.0, 0.0, 0.0, 0, "None"])
+
+    csv_data = output.getvalue()
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=fairpool_anonymized_trips.csv"},
+    )
 
 
 @app.post("/api/reset")

@@ -701,12 +701,22 @@ document.addEventListener('DOMContentLoaded', () => {
           max_detour_ratio: tol,
         }),
       });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || 'Error submitting rider request');
+      }
       const data = await res.json();
       showToast(`Request submitted for ${riderId}`, 'success');
       loadSystemState();
     } catch (err) {
-      showToast('Error submitting rider request', 'danger');
+      showToast(err.message || 'Error submitting rider request', 'warning');
     }
+  });
+
+  // Export Anonymized CSV Action (FR-20)
+  document.getElementById('btnExportCsv')?.addEventListener('click', () => {
+    window.location.href = '/api/export-csv';
+    showToast('Exporting anonymized trip logs CSV (FR-20)...', 'success');
   });
 
   // Submit Driver Offer Form
@@ -736,11 +746,15 @@ document.addEventListener('DOMContentLoaded', () => {
           max_driver_detour_min: detour,
         }),
       });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || 'Error submitting driver offer');
+      }
       const data = await res.json();
       showToast(`Driver offer submitted by ${driverId}`, 'success');
       loadSystemState();
     } catch (err) {
-      showToast('Error submitting driver offer', 'danger');
+      showToast(err.message || 'Error submitting driver offer', 'warning');
     }
   });
 

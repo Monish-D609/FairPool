@@ -11,7 +11,7 @@ from typing import List, Dict, Set, Tuple, Optional
 from fairpool.core.models import Trip, RiderRequest, DriverOffer
 
 try:
-    from scipy.optimize import milp, LinearConstraint
+    from scipy.optimize import milp, LinearConstraint, Bounds
     SCIPY_AVAILABLE = True
 except ImportError:
     SCIPY_AVAILABLE = False
@@ -67,8 +67,9 @@ class ExactILPSolver:
 
         constraints = LinearConstraint(A, ub=np.ones(total_constraints))
         integrality = np.ones(num_trips)  # 1 means integer (binary)
+        bounds = Bounds(0.0, 1.0)
 
-        res = milp(c=c, constraints=constraints, integrality=integrality)
+        res = milp(c=c, constraints=constraints, integrality=integrality, bounds=bounds)
 
         if res.success:
             chosen_indices = np.where(res.x > 0.5)[0]
