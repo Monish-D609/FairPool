@@ -96,10 +96,10 @@ export const GoogleMapVisualizer: React.FC<GoogleMapVisualizerProps> = ({
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return
 
-    // Center on Chennai to VIT Chennai (Vandalur-Kelambakkam) Corridor
+    // Center directly on VIT Chennai (Vandalur-Kelambakkam Road)
     const map = L.map(mapContainerRef.current, {
-      center: [12.8900, 80.1700],
-      zoom: 11,
+      center: [12.84085, 80.15393],
+      zoom: 12,
       zoomControl: false,
     })
 
@@ -413,9 +413,9 @@ export const GoogleMapVisualizer: React.FC<GoogleMapVisualizerProps> = ({
     }
   }, [trips, selectedTripId, onSelectTrip])
 
-  // Center on Chennai - VIT Chennai Corridor
+  // Center directly on VIT Chennai
   const handleResetView = () => {
-    mapRef.current?.setView([12.8900, 80.1700], 11)
+    mapRef.current?.setView([12.84085, 80.15393], 12)
     onSelectTrip(null)
   }
 
