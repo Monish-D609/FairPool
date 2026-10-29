@@ -258,3 +258,42 @@
 .animate-fade-in {
   animation: fadeIn 0.18s ease-out forwards;
 }
+
+/* Car Vehicle Marker Badge on Map */
+.car-vehicle-div-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.car-vehicle-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  color: #FFFFFF;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  border: 1.5px solid #FFFFFF;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: transform 0.15s ease-out;
+}
+
+.car-vehicle-badge:hover {
+  transform: scale(1.12);
+}
+
+.car-badge-icon {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.car-badge-title {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  letter-spacing: -0.01em;
+}
+

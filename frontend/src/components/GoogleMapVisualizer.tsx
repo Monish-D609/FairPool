@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import type { LocationNode, NetworkEdge, Trip } from '../types'
 import { ExternalLink, Compass, Layers, Move, Info, ChevronDown } from 'lucide-react'
+import { getTripColor } from '../colors'
 
 // Fix default Leaflet icon paths
 delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -42,18 +43,6 @@ const GOOGLE_LAYERS: Record<GoogleLayerType, { url: string; subdomains: string[]
   },
 }
 
-// Distinct vibrant route colors
-const ROUTE_PALETTE = [
-  '#06B6D4', // Cyan
-  '#10B981', // Emerald
-  '#F59E0B', // Amber
-  '#EC4899', // Pink
-  '#8B5CF6', // Purple
-  '#3B82F6', // Blue
-  '#14B8A6', // Teal
-  '#F97316', // Orange
-]
-
 export const GoogleMapVisualizer: React.FC<GoogleMapVisualizerProps> = ({
   nodes,
   edges,
@@ -81,7 +70,9 @@ export const GoogleMapVisualizer: React.FC<GoogleMapVisualizerProps> = ({
     {
       trip: Trip
       poly: L.Polyline
+      casing?: L.Polyline
       glow?: L.Polyline
+      vehicleMarker?: L.Marker
       stopBadges: { stop: any; marker: L.Marker }[]
     }[]
   >([])
@@ -242,7 +233,7 @@ export const GoogleMapVisualizer: React.FC<GoogleMapVisualizerProps> = ({
         })
 
         // Live update carpool route polylines & stops passing through this pin
-        tripPolylinesRef.current.forEach(({ trip, poly, glow, stopBadges }) => {
+        tripPolylinesRef.current.forEach(({ trip, poly, casing, glow, vehicleMarker, stopBadges }) => {
           if (trip.stops.some((s) => s.location_id === node.id)) {
             const latLngs: [number, number][] = []
             trip.stops.forEach((s) => {
@@ -250,7 +241,12 @@ export const GoogleMapVisualizer: React.FC<GoogleMapVisualizerProps> = ({
               if (loc) latLngs.push([loc.lat, loc.lng])
             })
             poly.setLatLngs(latLngs)
+            casing?.setLatLngs(latLngs)
             glow?.setLatLngs(latLngs)
+          }
+
+          if (trip.stops[0]?.location_id === node.id && vehicleMarker) {
+            vehicleMarker.setLatLng(newPos)
           }
 
           stopBadges.forEach(({ stop, marker: sMarker }) => {
@@ -316,7 +312,7 @@ export const GoogleMapVisualizer: React.FC<GoogleMapVisualizerProps> = ({
 
     trips.forEach((trip, idx) => {
       const isSelected = selectedTripId === trip.id
-      const color = ROUTE_PALETTE[idx % ROUTE_PALETTE.length]
+      const color = getTripColor(idx)
 
       // Extract coordinates from stops
       const latLngs: [number, number][] = []
@@ -327,37 +323,109 @@ export const GoogleMapVisualizer: React.FC<GoogleMapVisualizerProps> = ({
 
       if (latLngs.length < 2) return
 
+      // Underlay / Casing: dark halo behind route for crisp contrast between overlapping routes
+      const casingPoly = L.polyline(latLngs, {
+        color: '#070C18',
+        weight: isSelected ? 8.5 : 6,
+        opacity: isSelected ? 0.95 : 0.75,
+        lineCap: 'round',
+        lineJoin: 'round',
+      })
+      tripsLayerRef.current?.addLayer(casingPoly)
+
+      // Outer glow in the car's designated color if selected
       let glowPoly: L.Polyline | undefined
-      // Outer glow if selected
       if (isSelected) {
         glowPoly = L.polyline(latLngs, {
-          color: '#38BDF8',
-          weight: 9,
-          opacity: 0.6,
+          color: color,
+          weight: 14,
+          opacity: 0.55,
           lineCap: 'round',
           lineJoin: 'round',
         })
         tripsLayerRef.current?.addLayer(glowPoly)
       }
 
-      // Main route polyline
+      // Main route polyline in distinct car color
+      const isAnyTripSelected = Boolean(selectedTripId)
       const line = L.polyline(latLngs, {
         color: color,
-        weight: isSelected ? 5 : 3.5,
-        opacity: isSelected ? 1.0 : 0.8,
-        dashArray: isSelected ? undefined : '6, 6',
+        weight: isSelected ? 5.5 : 4,
+        opacity: isSelected ? 1.0 : isAnyTripSelected ? 0.45 : 0.95,
+        lineCap: 'round',
+        lineJoin: 'round',
       })
 
       line.on('click', () => {
         onSelectTrip(trip.id)
       })
 
+      line.on('mouseover', () => {
+        if (!isSelected) {
+          line.setStyle({ weight: 5.5, opacity: 1.0 })
+        }
+      })
+
+      line.on('mouseout', () => {
+        if (!isSelected) {
+          line.setStyle({
+            weight: 4,
+            opacity: selectedTripId ? 0.45 : 0.95,
+          })
+        }
+      })
+
+      const stopNames = trip.stops
+        .map((s) => nodeMap.current.get(s.location_id)?.name.split(' ')[0] || s.location_id)
+        .join(' → ')
+
       line.bindTooltip(
-        `<b>Trip ${trip.id}</b> (${trip.driver_id})<br/>👥 ${trip.request_ids.length} riders · ⚡ ${trip.saved_distance_km} km saved`,
+        `<div style="font-family: 'DM Sans', sans-serif; padding: 2px;">
+          <div style="font-weight: 800; font-size: 12px; color: ${color}; margin-bottom: 2px; display: flex; align-items: center; gap: 4px;">
+            <span>🚗</span> <span>Car #${idx + 1} (${trip.id})</span>
+          </div>
+          <div style="font-size: 11px; color: #F1F5F9; font-weight: 600;">
+            Driver: ${trip.driver_id}
+          </div>
+          <div style="font-size: 10px; color: #94A3B8; margin-top: 2px;">
+            👥 <b>${trip.request_ids.length}</b> commuters · ⚡ <b>${trip.saved_distance_km} km</b> saved
+          </div>
+          <div style="font-size: 10px; color: #CBD5E1; margin-top: 4px; border-top: 1px solid #334155; padding-top: 3px;">
+            <b>Route:</b> ${stopNames}
+          </div>
+        </div>`,
         { sticky: true }
       )
 
       tripsLayerRef.current?.addLayer(line)
+
+      // Car Vehicle Badge Marker at driver's origin
+      const originNode = nodeMap.current.get(trip.stops[0]?.location_id)
+      let vehicleMarker: L.Marker | undefined
+      if (originNode) {
+        const carHtml = `
+          <div class="car-vehicle-badge" style="background: ${color}; box-shadow: 0 0 12px ${color}80;">
+            <span class="car-badge-icon">🚗</span>
+            <span class="car-badge-title">Car #${idx + 1}</span>
+          </div>
+        `
+        const carIcon = L.divIcon({
+          className: 'car-vehicle-div-icon',
+          html: carHtml,
+          iconSize: [64, 24],
+          iconAnchor: [32, 28],
+        })
+        vehicleMarker = L.marker([originNode.lat, originNode.lng], {
+          icon: carIcon,
+          zIndexOffset: 1200 + (isSelected ? 500 : idx),
+        })
+        vehicleMarker.on('click', () => onSelectTrip(trip.id))
+        vehicleMarker.bindTooltip(
+          `<b>Car #${idx + 1}: ${trip.driver_id}</b><br/>👥 ${trip.request_ids.length} riders · ⚡ ${trip.saved_distance_km} km saved`,
+          { direction: 'top' }
+        )
+        tripsLayerRef.current?.addLayer(vehicleMarker)
+      }
 
       const stopBadges: { stop: any; marker: L.Marker }[] = []
 
@@ -367,18 +435,19 @@ export const GoogleMapVisualizer: React.FC<GoogleMapVisualizerProps> = ({
           const n = nodeMap.current.get(stop.location_id)
           if (!n) return
 
+          const isHub = n.is_campus_hub
           const stopHtml = `
-            <div class="route-stop-badge" style="background: ${color};">
-              ${sIdx + 1}
+            <div class="route-stop-badge" style="background: ${isHub ? '#10B981' : color};">
+              ${isHub ? '🎓' : sIdx + 1}
             </div>
           `
           const stopIcon = L.divIcon({
             className: 'route-stop-icon',
             html: stopHtml,
-            iconSize: [18, 18],
-            iconAnchor: [9, 9],
+            iconSize: [20, 20],
+            iconAnchor: [10, 10],
           })
-          const stopMarker = L.marker([n.lat, n.lng], { icon: stopIcon })
+          const stopMarker = L.marker([n.lat, n.lng], { icon: stopIcon, zIndexOffset: 900 })
           stopMarker.bindTooltip(
             `<b>Stop ${sIdx + 1}: ${n.name}</b><br/>${stop.stop_type} · ${stop.estimated_arrival.toFixed(1)}m`
           )
@@ -390,7 +459,9 @@ export const GoogleMapVisualizer: React.FC<GoogleMapVisualizerProps> = ({
       tripPolylinesRef.current.push({
         trip,
         poly: line,
+        casing: casingPoly,
         glow: glowPoly,
+        vehicleMarker,
         stopBadges,
       })
     })
@@ -539,19 +610,13 @@ export const GoogleMapVisualizer: React.FC<GoogleMapVisualizerProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <svg width="22" height="6" className="shrink-0">
-                    <line
-                      x1="0"
-                      y1="3"
-                      x2="22"
-                      y2="3"
-                      stroke="#06B6D4"
-                      strokeWidth="2.5"
-                      strokeDasharray="5 3"
-                    />
-                  </svg>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <span className="w-2.5 h-1 rounded-sm bg-cyan-400" />
+                    <span className="w-2.5 h-1 rounded-sm bg-amber-400" />
+                    <span className="w-2.5 h-1 rounded-sm bg-emerald-400" />
+                  </div>
                   <span className="text-slate-300">
-                    <strong className="text-cyan-400">Carpool Pool:</strong> Dispatched multi-stop trip
+                    <strong className="text-white">Car Routes:</strong> Distinct color per vehicle
                   </span>
                 </div>
 
@@ -564,19 +629,19 @@ export const GoogleMapVisualizer: React.FC<GoogleMapVisualizerProps> = ({
                       y2="4"
                       stroke="#38BDF8"
                       strokeWidth="6"
-                      opacity="0.45"
+                      opacity="0.55"
                     />
                     <line
                       x1="0"
                       y1="4"
                       x2="22"
                       y2="4"
-                      stroke="#0284C7"
+                      stroke="#FFFFFF"
                       strokeWidth="2.5"
                     />
                   </svg>
                   <span className="text-slate-300">
-                    <strong className="text-blue-300">Selected Route:</strong> Focused pool (click to inspect)
+                    <strong className="text-cyan-300">Selected Route:</strong> Focused pool with matching glow
                   </span>
                 </div>
               </div>
@@ -598,6 +663,46 @@ export const GoogleMapVisualizer: React.FC<GoogleMapVisualizerProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Active Carpools Color Manifest */}
+            {trips.length > 0 && (
+              <div className="border-t border-slate-800/80 pt-1.5">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                  Active Carpools ({trips.length})
+                </span>
+                <div className="max-h-24 overflow-y-auto space-y-1 custom-scrollbar pr-0.5">
+                  {trips.map((trip, idx) => {
+                    const c = getTripColor(idx)
+                    const isSelected = selectedTripId === trip.id
+                    return (
+                      <button
+                        key={trip.id}
+                        type="button"
+                        onClick={() => onSelectTrip(isSelected ? null : trip.id)}
+                        className={`w-full flex items-center justify-between px-1.5 py-1 rounded text-[10px] transition text-left ${
+                          isSelected
+                            ? 'bg-slate-800 text-white font-bold ring-1 ring-cyan-400'
+                            : 'hover:bg-slate-800/60 text-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm"
+                            style={{ backgroundColor: c }}
+                          />
+                          <span className="truncate">
+                            <strong style={{ color: c }}>Car #{idx + 1}</strong> · {trip.driver_id.split('@')[0]}
+                          </span>
+                        </div>
+                        <span className="text-[9px] font-mono text-slate-400 shrink-0 ml-1">
+                          {trip.request_ids.length} riders
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {trips.length > 0 && (
               <div className="border-t border-slate-800/80 pt-1.5 flex items-center justify-between">

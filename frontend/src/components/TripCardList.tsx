@@ -1,6 +1,7 @@
 import React from 'react'
 import type { Trip, LocationNode } from '../types'
 import { Car, ExternalLink, Clock, CheckCircle2 } from 'lucide-react'
+import { getTripColor } from '../colors'
 
 interface TripCardListProps {
   trips: Trip[]
@@ -67,30 +68,59 @@ export const TripCardList: React.FC<TripCardListProps> = ({
 
   return (
     <div className="space-y-3 overflow-y-auto max-h-[580px] pr-1 custom-scrollbar">
-      {trips.map((trip) => {
+      {trips.map((trip, idx) => {
         const isSelected = selectedTripId === trip.id
+        const color = getTripColor(idx)
         return (
           <div
             key={trip.id}
             onClick={() => onSelectTrip(isSelected ? null : trip.id)}
+            style={{
+              borderLeftColor: color,
+              borderLeftWidth: '4px',
+              ...(isSelected
+                ? {
+                    borderColor: color,
+                    boxShadow: `0 0 20px ${color}35`,
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                  }
+                : {}),
+            }}
             className={`trip-card p-4 rounded-xl border transition-all cursor-pointer ${
               isSelected
-                ? 'bg-slate-800/95 border-cyan-500/80 shadow-lg shadow-cyan-500/15'
+                ? 'bg-slate-800/95'
                 : 'bg-slate-900/70 hover:bg-slate-800/60 border-slate-700/60'
             }`}
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-2.5">
-              <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-xs">
-                  <Car size={14} />
+              <div className="flex items-center gap-2.5">
+                <span
+                  className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shadow-sm transition"
+                  style={{
+                    backgroundColor: `${color}20`,
+                    color: color,
+                    border: `1px solid ${color}50`,
+                  }}
+                >
+                  <Car size={16} />
                 </span>
                 <div>
                   <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <span
+                      className="px-1.5 py-0.5 rounded text-[10px] font-extrabold uppercase font-mono tracking-wide"
+                      style={{
+                        backgroundColor: `${color}25`,
+                        color: color,
+                        border: `1px solid ${color}40`,
+                      }}
+                    >
+                      Car #{idx + 1}
+                    </span>
                     <span>{trip.id}</span>
                     <span className="text-[10px] font-normal text-slate-400">({trip.driver_id})</span>
                   </div>
-                  <div className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
+                  <div className="text-[10px] text-emerald-400 font-medium flex items-center gap-1 mt-0.5">
                     <CheckCircle2 size={10} />
                     <span>{trip.request_ids.length} Commuters Matched</span>
                   </div>
@@ -132,32 +162,30 @@ export const TripCardList: React.FC<TripCardListProps> = ({
             </div>
 
             {/* Stop-by-Stop Itinerary */}
-            <div className="relative pl-3 space-y-2 border-l border-slate-700/60 ml-1">
+            <div
+              className="relative pl-3 space-y-2 border-l ml-1"
+              style={{ borderLeftColor: `${color}40` }}
+            >
               {trip.stops.map((stop, sIdx) => {
                 const nodeName = nodeNameMap.get(stop.location_id) || stop.location_id
                 const isOrigin = stop.stop_type === 'DRIVER_ORIGIN'
                 const isDest = stop.stop_type === 'DRIVER_DESTINATION'
-                const isPickup = stop.stop_type === 'PICKUP'
 
                 return (
                   <div key={sIdx} className="relative flex items-center justify-between text-[11px]">
                     {/* Node Dot */}
                     <div
-                      className={`absolute -left-[17px] w-2 h-2 rounded-full ${
-                        isOrigin
-                          ? 'bg-blue-400'
-                          : isDest
-                          ? 'bg-emerald-400'
-                          : isPickup
-                          ? 'bg-amber-400'
-                          : 'bg-slate-400'
-                      }`}
+                      className="absolute -left-[17px] w-2 h-2 rounded-full"
+                      style={{
+                        backgroundColor: isDest ? '#10B981' : color,
+                        boxShadow: `0 0 6px ${isDest ? '#10B981' : color}80`,
+                      }}
                     />
 
                     <div className="flex items-center gap-1.5 text-slate-300">
                       <span className="font-medium truncate max-w-[170px]">{nodeName}</span>
                       <span className="text-[9px] text-slate-500 uppercase">
-                        {isOrigin ? 'Start' : isDest ? 'Destination' : 'Pickup'}
+                        {isOrigin ? 'Start' : isDest ? 'VIT Campus' : `Stop #${sIdx + 1}`}
                       </span>
                     </div>
 
