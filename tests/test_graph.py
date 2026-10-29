@@ -19,8 +19,8 @@ def test_default_campus_network_connectivity():
     net = create_default_campus_network()
     assert len(net.nodes) >= 12
 
-    # Verify every node is reachable from IIT Madras
-    hub_id = "IIT_MADRAS"
+    # Verify every node is reachable from VIT Chennai
+    hub_id = "VIT_CHENNAI"
     dist_map, time_map = net.dijkstra(hub_id)
 
     for node_id in net.nodes:
@@ -31,7 +31,7 @@ def test_default_campus_network_connectivity():
 def test_triangle_inequality():
     net = create_default_campus_network()
     # d(u, w) <= d(u, v) + d(v, w)
-    d_hub_tambaram = net.distance_km("IIT_MADRAS", "TAMBARAM")
-    d_hub_guindy = net.distance_km("IIT_MADRAS", "GUINDY")
-    d_guindy_tambaram = net.distance_km("GUINDY", "TAMBARAM")
-    assert d_hub_tambaram <= (d_hub_guindy + d_guindy_tambaram) + 1e-5
+    d_hub_tambaram = net.distance_km("VIT_CHENNAI", "TAMBARAM")
+    d_hub_vandalur = net.distance_km("VIT_CHENNAI", "VANDALUR")
+    d_vandalur_tambaram = net.distance_km("VANDALUR", "TAMBARAM")
+    assert d_hub_tambaram <= (d_hub_vandalur + d_vandalur_tambaram) + 1e-5

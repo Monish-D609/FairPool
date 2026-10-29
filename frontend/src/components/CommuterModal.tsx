@@ -17,14 +17,14 @@ export const CommuterModal: React.FC<CommuterModalProps> = ({
   onClose,
   nodes,
   initialOrigin,
-  initialDestination,
+  initialDestination: _initialDestination,
   onSuccess,
 }) => {
   const [activeTab, setActiveTab] = useState<'rider' | 'driver'>('rider')
-  const [riderId, setRiderId] = useState('commuter@campus.edu')
-  const [driverId, setDriverId] = useState('faculty.driver@campus.edu')
+  const [riderId, setRiderId] = useState('student@vitstudent.ac.in')
+  const [driverId, setDriverId] = useState('faculty@vit.ac.in')
   const [originId, setOriginId] = useState(initialOrigin?.id || 'TAMBARAM')
-  const [destId, setDestId] = useState(initialDestination?.id || 'IIT_MADRAS')
+  const [destId, setDestId] = useState('VIT_CHENNAI')
   const [capacity, setCapacity] = useState(3)
   const [maxDetourRatio, setMaxDetourRatio] = useState(0.35)
   const [maxDriverDetourMin, setMaxDriverDetourMin] = useState(18)
@@ -35,17 +35,18 @@ export const CommuterModal: React.FC<CommuterModalProps> = ({
   // Sync origin/destination when modal opens or map node selection changes
   useEffect(() => {
     if (isOpen) {
-      if (initialOrigin) setOriginId(initialOrigin.id)
-      if (initialDestination) setDestId(initialDestination.id)
+      if (initialOrigin && initialOrigin.id !== 'VIT_CHENNAI') {
+        setOriginId(initialOrigin.id)
+      }
+      setDestId('VIT_CHENNAI')
       // Reset feedback messages on each open
       setErrorMsg(null)
       setSuccessMsg(null)
     }
-  }, [isOpen, initialOrigin, initialDestination])
+  }, [isOpen, initialOrigin])
 
   if (!isOpen) return null
 
-  const campusHubs = nodes.filter((n) => n.is_campus_hub)
   const suburbs = nodes.filter((n) => !n.is_campus_hub)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -162,12 +163,12 @@ export const CommuterModal: React.FC<CommuterModalProps> = ({
               onChange={(e) =>
                 activeTab === 'rider' ? setRiderId(e.target.value) : setDriverId(e.target.value)
               }
-              placeholder="user@campus.edu or user@university.ac.in"
+              placeholder="user@vitstudent.ac.in or user@vit.ac.in"
               required
               className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
             />
             <span className="text-[10px] text-slate-500 mt-1 block">
-              Allowed: @campus.edu, @university.ac.in, @office.org
+              Allowed: @vitstudent.ac.in, @vit.ac.in, @campus.edu
             </span>
           </div>
 
@@ -189,40 +190,19 @@ export const CommuterModal: React.FC<CommuterModalProps> = ({
                     </option>
                   ))}
                 </optgroup>
-                <optgroup label="Campus Hubs">
-                  {campusHubs.map((n) => (
-                    <option key={n.id} value={n.id}>
-                      {n.name}
-                    </option>
-                  ))}
-                </optgroup>
               </select>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Commute Destination Hub
+                Sole Campus Destination
               </label>
-              <select
-                value={destId}
-                onChange={(e) => setDestId(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
-              >
-                <optgroup label="Academic & Work Hubs">
-                  {campusHubs.map((n) => (
-                    <option key={n.id} value={n.id}>
-                      ⭐ {n.name}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="Other Districts">
-                  {suburbs.map((n) => (
-                    <option key={n.id} value={n.id}>
-                      {n.name}
-                    </option>
-                  ))}
-                </optgroup>
-              </select>
+              <div className="w-full px-3 py-2 bg-slate-950/80 border border-emerald-500/40 rounded-xl text-xs text-emerald-300 font-semibold flex items-center justify-between">
+                <span className="truncate">🎓 VIT Chennai</span>
+                <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 shrink-0">
+                  Default Drop
+                </span>
+              </div>
             </div>
           </div>
 

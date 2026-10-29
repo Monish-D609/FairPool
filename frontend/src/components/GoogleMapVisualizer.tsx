@@ -96,10 +96,10 @@ export const GoogleMapVisualizer: React.FC<GoogleMapVisualizerProps> = ({
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return
 
-    // Center on Chennai (Adyar / Guindy / IIT Madras corridor)
+    // Center on Chennai to VIT Chennai (Vandalur-Kelambakkam) Corridor
     const map = L.map(mapContainerRef.current, {
-      center: [12.9915, 80.2337],
-      zoom: 12,
+      center: [12.8900, 80.1700],
+      zoom: 11,
       zoomControl: false,
     })
 
@@ -272,35 +272,31 @@ export const GoogleMapVisualizer: React.FC<GoogleMapVisualizerProps> = ({
         <div style="font-family: 'DM Sans', sans-serif; min-width: 170px; padding: 4px;">
           <div style="font-weight: 700; font-size: 13px; color: #0F172A; margin-bottom: 2px;">${node.name}</div>
           <div style="font-size: 11px; color: ${isHub ? '#059669' : '#64748B'}; font-weight: 600; margin-bottom: 6px;">
-            ${isHub ? '🎓 Central Campus Hub' : '📍 Commuter Pickup (Movable)'}
+            ${isHub ? '🎓 Sole Campus Destination (VIT Chennai)' : '📍 Commuter Pickup (Movable)'}
           </div>
           <div style="font-size: 10px; color: #64748B; margin-bottom: 8px;">
             Drag pin to reposition anywhere
           </div>
-          <div style="display: flex; gap: 6px; margin-top: 4px;">
-            <button id="btn-orig-${node.id}" style="flex:1; padding: 4px 6px; background: #0284C7; color: white; border: none; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 600;">
-              Pick Origin
-            </button>
-            <button id="btn-dest-${node.id}" style="flex:1; padding: 4px 6px; background: #059669; color: white; border: none; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 600;">
-              Pick Dest
-            </button>
-          </div>
+          ${
+            !isHub
+              ? `<div style="display: flex; gap: 6px; margin-top: 4px;">
+                  <button id="btn-orig-${node.id}" style="flex:1; padding: 4px 6px; background: #0284C7; color: white; border: none; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 600;">
+                    Pick as Origin
+                  </button>
+                </div>`
+              : `<div style="padding: 4px 6px; background: #ECFDF5; color: #065F46; border-radius: 4px; font-size: 10px; font-weight: 700; text-align: center;">
+                  Default & Only Drop Point
+                </div>`
+          }
         </div>
       `
 
       marker.bindPopup(popupContent)
       marker.on('popupopen', () => {
         const origBtn = document.getElementById(`btn-orig-${node.id}`)
-        const destBtn = document.getElementById(`btn-dest-${node.id}`)
         if (origBtn) {
           origBtn.onclick = () => {
             onSelectNodeAsOrigin?.(node)
-            marker.closePopup()
-          }
-        }
-        if (destBtn) {
-          destBtn.onclick = () => {
-            onSelectNodeAsDestination?.(node)
             marker.closePopup()
           }
         }
@@ -417,9 +413,9 @@ export const GoogleMapVisualizer: React.FC<GoogleMapVisualizerProps> = ({
     }
   }, [trips, selectedTripId, onSelectTrip])
 
-  // Center on Chennai Hub
+  // Center on Chennai - VIT Chennai Corridor
   const handleResetView = () => {
-    mapRef.current?.setView([12.9915, 80.2337], 12)
+    mapRef.current?.setView([12.8900, 80.1700], 11)
     onSelectTrip(null)
   }
 
@@ -495,7 +491,7 @@ export const GoogleMapVisualizer: React.FC<GoogleMapVisualizerProps> = ({
       <div className="absolute bottom-3 left-3 z-20 pointer-events-auto flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-800 text-xs text-slate-300 shadow-lg">
         <div className="flex items-center gap-1.5 text-[11px]">
           <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
-          <span>🎓 Campus Hub</span>
+          <span>🎓 VIT Chennai (Sole Destination)</span>
         </div>
         <span className="text-slate-600">|</span>
         <div className="flex items-center gap-1.5 text-[11px]">

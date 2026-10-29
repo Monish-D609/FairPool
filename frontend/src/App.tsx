@@ -139,12 +139,12 @@ export const App: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-base font-extrabold tracking-tight text-white">FairPool</h1>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                Chennai Metro
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                VIT Chennai
               </span>
             </div>
             <p className="text-[10px] text-slate-400 hidden sm:block">
-              Algorithmic Carpooling & Detour Equity Engine
+              City-to-Campus Carpool Engine · Vandalur-Kelambakkam Main Road
             </p>
           </div>
         </div>

@@ -39,7 +39,7 @@ app.add_middleware(
 )
 
 # Allowed Institutional Email Domains (FR-1)
-ALLOWED_DOMAINS = ["campus.edu", "university.ac.in", "office.org", "fairpool.local"]
+ALLOWED_DOMAINS = ["vit.ac.in", "vitstudent.ac.in", "campus.edu", "university.ac.in", "office.org", "fairpool.local"]
 
 # Global Simulation & System State
 road_net: RoadNetwork = create_default_campus_network()

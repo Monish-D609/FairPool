@@ -24,7 +24,7 @@ def test_api_domain_verification_fr1():
     valid_payload = {
         "rider_id": "scholar@campus.edu",
         "origin_id": "TAMBARAM",
-        "destination_id": "IIT_MADRAS",
+        "destination_id": "VIT_CHENNAI",
         "earliest_departure": 0.0,
         "latest_arrival": 45.0,
         "max_detour_ratio": 0.35,
@@ -36,7 +36,7 @@ def test_api_domain_verification_fr1():
     invalid_payload = {
         "rider_id": "intruder@unauthorized-domain.com",
         "origin_id": "TAMBARAM",
-        "destination_id": "IIT_MADRAS",
+        "destination_id": "VIT_CHENNAI",
         "earliest_departure": 0.0,
         "latest_arrival": 45.0,
         "max_detour_ratio": 0.35,
@@ -50,7 +50,7 @@ def test_api_cancellation_fr6():
     payload = {
         "rider_id": "cancel_test@campus.edu",
         "origin_id": "TAMBARAM",
-        "destination_id": "IIT_MADRAS",
+        "destination_id": "VIT_CHENNAI",
         "earliest_departure": 5.0,
         "latest_arrival": 45.0,
         "max_detour_ratio": 0.35,

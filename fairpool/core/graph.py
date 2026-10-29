@@ -187,7 +187,7 @@ class RoadNetwork:
                     })
         return {
             "city": "Chennai",
-            "center": {"lat": 13.0067, "lng": 80.2200},
+            "center": {"lat": 12.8900, "lng": 80.1700},
             "nodes": [loc.to_dict() for loc in self.nodes.values()],
             "edges": edges,
         }
@@ -196,28 +196,26 @@ class RoadNetwork:
 def create_default_campus_network() -> RoadNetwork:
     """
     Creates the Chennai Metropolitan City-to-Campus Commuter Corridor.
-    Central Academic & Tech Hubs:
-      - IIT Madras (Main Academic Core)
-      - Anna University (Guindy Campus)
-      - Tidel Park (OMR Technology Center)
+    Single Central Campus Destination:
+      - VIT Chennai (Vandalur-Kelambakkam Main Road)
     City Residential Origin Clusters across Chennai:
-      - Tambaram, Chromepet, Porur, Anna Nagar, Kilpauk, Nungambakkam,
-        T. Nagar, Alwarpet, Velachery, Medavakkam, Adyar, Thiruvanmiyur,
-        Perungudi, Sholinganallur, Siruseri, Guindy.
+      - Vandalur, Tambaram, Chromepet, Guindy, Kelambakkam, Siruseri,
+        Sholinganallur, Perungudi, Thiruvanmiyur, Adyar, Velachery,
+        Medavakkam, T. Nagar, Alwarpet, Porur, Anna Nagar, Kilpauk, Nungambakkam.
     """
     net = RoadNetwork(avg_speed_kmh=35.0)
 
-    # Destination Academic / Corporate Hubs
-    net.add_node("IIT_MADRAS", "IIT Madras Academic Complex", 12.9915, 80.2337, is_campus_hub=True)
-    net.add_node("ANNA_UNIV", "Anna University (Guindy)", 13.0110, 80.2354, is_campus_hub=True)
-    net.add_node("TIDEL_PARK", "Tidel Park / OMR Hub", 12.9892, 80.2486, is_campus_hub=True)
+    # Sole Dedicated Campus Destination: VIT Chennai on Vandalur-Kelambakkam Main Road
+    net.add_node("VIT_CHENNAI", "VIT Chennai (Vandalur-Kelambakkam Rd)", 12.8406, 80.1534, is_campus_hub=True)
 
-    # South Chennai Suburban Ingress (GST Road Corridor)
+    # South Chennai & Ingress Corridors (GST Road / Vandalur)
+    net.add_node("VANDALUR", "Vandalur Zoo Junction", 12.8913, 80.0812, is_campus_hub=False)
     net.add_node("TAMBARAM", "Tambaram Railway Gateway", 12.9249, 80.1000, is_campus_hub=False)
     net.add_node("CHROMEPET", "Chromepet GST Road", 12.9516, 80.1462, is_campus_hub=False)
     net.add_node("GUINDY", "Guindy Kathipara Interchange", 13.0067, 80.2030, is_campus_hub=False)
 
-    # South-East IT Corridor (OMR / ECR)
+    # South-East IT Corridor (OMR / Kelambakkam / ECR)
+    net.add_node("KELAMBAKKAM", "Kelambakkam Junction", 12.7900, 80.2200, is_campus_hub=False)
     net.add_node("SIRUSERI", "Siruseri SIPCOT IT Park", 12.8270, 80.2190, is_campus_hub=False)
     net.add_node("SHOLINGANALLUR", "Sholinganallur Junction", 12.9010, 80.2279, is_campus_hub=False)
     net.add_node("PERUNGUDI", "Perungudi OMR Toll", 12.9654, 80.2461, is_campus_hub=False)
@@ -236,46 +234,42 @@ def create_default_campus_network() -> RoadNetwork:
     net.add_node("KILPAUK", "Kilpauk EVR Periyar Salai", 13.0784, 80.2412, is_campus_hub=False)
     net.add_node("NUNGAMBAKKAM", "Nungambakkam High Road", 13.0595, 80.2425, is_campus_hub=False)
 
-    # Connect Highway & Arterial Edges
-    # 1. GST Road Arterial Corridor
+    # 1. Vandalur-Kelambakkam Main Road Arterial (Passes directly through VIT Chennai)
+    net.add_edge("VANDALUR", "VIT_CHENNAI", speed_kmh=50.0)
+    net.add_edge("VIT_CHENNAI", "KELAMBAKKAM", speed_kmh=50.0)
+    net.add_edge("KELAMBAKKAM", "SIRUSERI", speed_kmh=50.0)
+
+    # 2. GST Road Corridor
+    net.add_edge("TAMBARAM", "VANDALUR", speed_kmh=50.0)
     net.add_edge("TAMBARAM", "CHROMEPET", speed_kmh=45.0)
     net.add_edge("CHROMEPET", "GUINDY", speed_kmh=45.0)
-    net.add_edge("GUINDY", "IIT_MADRAS", speed_kmh=35.0)
-    net.add_edge("GUINDY", "ANNA_UNIV", speed_kmh=35.0)
 
-    # 2. OMR IT Expressway Corridor
+    # 3. Direct Medavakkam - Mambakkam Arterial into VIT Chennai
+    net.add_edge("MEDAVAKKAM", "VIT_CHENNAI", speed_kmh=45.0)
+    net.add_edge("MEDAVAKKAM", "VELACHERY", speed_kmh=40.0)
+    net.add_edge("MEDAVAKKAM", "SHOLINGANALLUR", speed_kmh=40.0)
+
+    # 4. OMR IT Expressway Corridor
     net.add_edge("SIRUSERI", "SHOLINGANALLUR", speed_kmh=50.0)
     net.add_edge("SHOLINGANALLUR", "PERUNGUDI", speed_kmh=45.0)
-    net.add_edge("PERUNGUDI", "TIDEL_PARK", speed_kmh=40.0)
-    net.add_edge("TIDEL_PARK", "IIT_MADRAS", speed_kmh=30.0)
-
-    # 3. Velachery & Medavakkam Arterials
-    net.add_edge("MEDAVAKKAM", "VELACHERY", speed_kmh=40.0)
-    net.add_edge("VELACHERY", "IIT_MADRAS", speed_kmh=30.0)
-    net.add_edge("VELACHERY", "GUINDY", speed_kmh=35.0)
-    net.add_edge("VELACHERY", "TIDEL_PARK", speed_kmh=35.0)
-
-    # 4. Coastal / Adyar / ECR Arterials
+    net.add_edge("PERUNGUDI", "THIRUVANMIYUR", speed_kmh=40.0)
     net.add_edge("THIRUVANMIYUR", "ADYAR", speed_kmh=35.0)
-    net.add_edge("THIRUVANMIYUR", "TIDEL_PARK", speed_kmh=35.0)
-    net.add_edge("ADYAR", "IIT_MADRAS", speed_kmh=30.0)
-    net.add_edge("ADYAR", "ANNA_UNIV", speed_kmh=30.0)
 
-    # 5. Central Chennai Corridors (Kilpauk -> Nungambakkam -> T. Nagar -> Alwarpet -> IIT)
-    net.add_edge("KILPAUK", "NUNGAMBAKKAM", speed_kmh=30.0)
-    net.add_edge("NUNGAMBAKKAM", "T_NAGAR", speed_kmh=30.0)
+    # 5. Adyar, Guindy & Central Chennai
+    net.add_edge("ADYAR", "GUINDY", speed_kmh=35.0)
+    net.add_edge("VELACHERY", "GUINDY", speed_kmh=35.0)
+    net.add_edge("VELACHERY", "PERUNGUDI", speed_kmh=35.0)
+    net.add_edge("T_NAGAR", "GUINDY", speed_kmh=35.0)
     net.add_edge("T_NAGAR", "ALWARPET", speed_kmh=30.0)
-    net.add_edge("ALWARPET", "ANNA_UNIV", speed_kmh=35.0)
-    net.add_edge("ANNA_UNIV", "IIT_MADRAS", speed_kmh=30.0)
+    net.add_edge("ALWARPET", "ADYAR", speed_kmh=30.0)
+    net.add_edge("NUNGAMBAKKAM", "T_NAGAR", speed_kmh=30.0)
+    net.add_edge("KILPAUK", "NUNGAMBAKKAM", speed_kmh=30.0)
 
-    # 6. West Corridor (Anna Nagar -> Porur -> Guindy)
+    # 6. West Corridor
     net.add_edge("ANNA_NAGAR", "PORUR", speed_kmh=40.0)
     net.add_edge("ANNA_NAGAR", "NUNGAMBAKKAM", speed_kmh=35.0)
     net.add_edge("PORUR", "GUINDY", speed_kmh=40.0)
-
-    # 7. Cross-connecting Links
-    net.add_edge("SHOLINGANALLUR", "MEDAVAKKAM", speed_kmh=40.0)
-    net.add_edge("T_NAGAR", "GUINDY", speed_kmh=35.0)
+    net.add_edge("PORUR", "TAMBARAM", speed_kmh=45.0)
 
     net.compute_all_pairs()
     return net
