@@ -128,9 +128,11 @@ export const BenchmarkModal: React.FC<BenchmarkModalProps> = ({ isOpen, onClose 
                           key={key}
                           className={isFairPool ? 'bg-cyan-500/5 font-semibold text-white' : 'text-slate-300'}
                         >
-                          <td className="py-3 px-4 flex items-center gap-1.5 font-sans">
-                            {isFairPool && <CheckCircle2 size={12} className="text-cyan-400" />}
-                            <span>{m.algorithm_name}</span>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1.5 font-sans">
+                              {isFairPool && <CheckCircle2 size={12} className="text-cyan-400" />}
+                              <span>{m.algorithm_name}</span>
+                            </div>
                           </td>
                           <td className="py-3 px-4">
                             <span

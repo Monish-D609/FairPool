@@ -83,9 +83,11 @@ export const FairnessLedgerModal: React.FC<FairnessLedgerModalProps> = ({
                   const isHighDetour = detourMin > meanDetour * 1.2
                   return (
                     <tr key={driverId} className="text-slate-300">
-                      <td className="py-2.5 px-4 font-sans font-medium flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-                        <span>{driverId}</span>
+                      <td className="py-2.5 px-4 font-sans font-medium">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0"></span>
+                          <span>{driverId}</span>
+                        </div>
                       </td>
                       <td className="py-2.5 px-4 font-bold text-white">
                         {detourMin.toFixed(1)} min

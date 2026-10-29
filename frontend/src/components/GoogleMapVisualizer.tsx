@@ -353,7 +353,7 @@ export const GoogleMapVisualizer: React.FC<GoogleMapVisualizerProps> = ({
   }
 
   return (
-    <div className="google-map-wrapper relative z-0 isolate h-full w-full rounded-2xl overflow-hidden border border-slate-700/60 shadow-2xl bg-slate-900">
+    <div className="google-map-wrapper relative z-0 h-full w-full rounded-2xl overflow-hidden border border-slate-700/60 shadow-2xl bg-slate-900">
       {/* Top Floating Controls */}
       <div className="map-floating-header">
         <div className="flex items-center gap-2">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import type { LocationNode } from '../types'
 import { submitRiderRequest, submitDriverOffer } from '../api'
 import { X, UserPlus, Car, MapPin, AlertCircle, CheckCircle2 } from 'lucide-react'
@@ -31,6 +31,17 @@ export const CommuterModal: React.FC<CommuterModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
+
+  // Sync origin/destination when modal opens or map node selection changes
+  useEffect(() => {
+    if (isOpen) {
+      if (initialOrigin) setOriginId(initialOrigin.id)
+      if (initialDestination) setDestId(initialDestination.id)
+      // Reset feedback messages on each open
+      setErrorMsg(null)
+      setSuccessMsg(null)
+    }
+  }, [isOpen, initialOrigin, initialDestination])
 
   if (!isOpen) return null
 

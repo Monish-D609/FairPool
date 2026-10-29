@@ -38,11 +38,30 @@
 .google-map-wrapper {
   position: relative;
   z-index: 0;
-  isolation: isolate; /* CRUCIAL: Encapsulates all Leaflet internal z-indices so they never leak out */
+  /* NOTE: Do NOT use isolation:isolate here — it creates a new stacking context
+     that clips Leaflet's zoom controls (z-index 1000) below the floating overlays (z-index 20). */
 }
 
 .leaflet-container {
-  z-index: 0;
+  z-index: 0 !important;
+}
+
+/* Ensure Leaflet controls are always on top of our floating overlays */
+.leaflet-control-container {
+  z-index: 30 !important;
+}
+
+.leaflet-control-zoom {
+  z-index: 30 !important;
+}
+
+.leaflet-pane {
+  z-index: 4 !important;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 30 !important;
 }
 
 /* Google Map Floating Overlays */
@@ -63,7 +82,8 @@
   position: absolute;
   bottom: 14px;
   left: 14px;
-  right: 14px;
+  /* Leave room on the right for the Leaflet zoom control (bottomright ~80px) */
+  right: 90px;
   z-index: 20;
   display: flex;
   align-items: center;

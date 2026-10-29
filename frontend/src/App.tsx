@@ -501,7 +501,11 @@ export const App: React.FC = () => {
       {/* Modals */}
       <CommuterModal
         isOpen={isCommuterModalOpen}
-        onClose={() => setIsCommuterModalOpen(false)}
+        onClose={() => {
+          setIsCommuterModalOpen(false)
+          setPickedOrigin(null)
+          setPickedDest(null)
+        }}
         nodes={nodes}
         initialOrigin={pickedOrigin}
         initialDestination={pickedDest}

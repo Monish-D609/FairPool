@@ -136,6 +136,8 @@ pip install -r requirements.txt
 ```
 
 ### 1. Launch the Interactive Web Application
+- **Windows (One-Click):** Double-click [`run.bat`](run.bat) (automatically verifies dependencies, boots the server, and opens your browser).
+- **Manual CLI:**
 ```bash
 python run.py --serve
 # Open http://127.0.0.1:8000 in your browser
@@ -209,6 +211,7 @@ FairPool/
 ├── SRS.md                      # Software Requirements Specification
 ├── URS.md                      # User Requirements Specification
 ├── requirements.txt            # Python dependencies
+├── run.bat                     # Windows one-click launcher
 ├── run.py                      # One-command CLI entrypoint
 └── README.md                   # Project documentation & DAA evaluation guide
 ```
