@@ -66,6 +66,31 @@ class RoadNetwork:
         if bidirectional:
             self.adj[v].append((u, road_dist_km, speed, travel_time_min))
 
+    def update_node_position(self, node_id: str, lat: float, lng: float) -> bool:
+        """Updates GPS coordinates of a node and refreshes edge distances & cache."""
+        if node_id not in self.nodes:
+            return False
+        self.nodes[node_id].lat = lat
+        self.nodes[node_id].lng = lng
+        self._distance_matrix.clear()
+        self._time_matrix.clear()
+
+        # Update edge weights in adjacency list
+        for u in self.adj:
+            updated_list = []
+            for v, dist_km, speed, time_min in self.adj[u]:
+                if u == node_id or v == node_id:
+                    d = haversine_distance_km(
+                        self.nodes[u].lat, self.nodes[u].lng,
+                        self.nodes[v].lat, self.nodes[v].lng
+                    ) * 1.25
+                    t = (d / max(speed, 10.0)) * 60.0
+                    updated_list.append((v, d, speed, t))
+                else:
+                    updated_list.append((v, dist_km, speed, time_min))
+            self.adj[u] = updated_list
+        return True
+
     def dijkstra(self, source: str) -> Tuple[Dict[str, float], Dict[str, float]]:
         """Dijkstra's shortest path from source to all reachable nodes."""
         dist: Dict[str, float] = {node: float('inf') for node in self.nodes}

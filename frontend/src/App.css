@@ -119,7 +119,7 @@
   font-size: 14px;
 }
 
-/* Custom Google Map Pins */
+/* Custom Google Map Pins - Dynamically Movable */
 .google-map-marker {
   background: transparent !important;
   border: none !important;
@@ -130,13 +130,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: grab !important;
+  user-select: none;
+  transition: transform 0.15s ease-out;
 }
 
 .google-pin-wrapper:hover {
-  transform: scale(1.15) translateY(-3px);
-  z-index: 30 !important;
+  transform: scale(1.18) translateY(-4px);
+  z-index: 40 !important;
+}
+
+.google-pin-wrapper:active {
+  cursor: grabbing !important;
+  transform: scale(1.25) translateY(-6px);
 }
 
 .google-pin-head {

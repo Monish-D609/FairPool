@@ -112,11 +112,25 @@ class GenerateBatchOptions(BaseModel):
     seed: int = 42
 
 
+class UpdateNodeLocation(BaseModel):
+    lat: float
+    lng: float
+
+
 # API Endpoints
 @app.get("/api/network")
 def get_network() -> Dict[str, Any]:
     """Returns road network nodes and edges for map visualization."""
     return road_net.to_dict()
+
+
+@app.patch("/api/nodes/{node_id}")
+def update_node_location(node_id: str, data: UpdateNodeLocation) -> Dict[str, Any]:
+    """Dynamically moves a pin/node on the map and updates road distances."""
+    success = road_net.update_node_position(node_id, data.lat, data.lng)
+    if not success:
+        raise HTTPException(status_code=404, detail="Node not found")
+    return {"message": f"Node {node_id} updated", "node": road_net.nodes[node_id].to_dict()}
 
 
 @app.get("/api/state")

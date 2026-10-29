@@ -13,6 +13,14 @@ export async function fetchNetwork(): Promise<NetworkData> {
   return res.json()
 }
 
+export async function updateNodePosition(nodeId: string, lat: number, lng: number): Promise<void> {
+  await fetch(`${BASE_URL}/api/nodes/${nodeId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lat, lng }),
+  }).catch((err) => console.warn('Could not sync node position with backend:', err))
+}
+
 export async function fetchState(): Promise<SystemState> {
   const res = await fetch(`${BASE_URL}/api/state`)
   if (!res.ok) throw new Error(`Failed to fetch state: ${res.statusText}`)
