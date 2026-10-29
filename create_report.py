@@ -222,8 +222,8 @@ def build_report():
         "The Chennai metropolitan transit corridor is modeled as a weighted directed graph G = (V, E, W), where:",
         "Graph Topology — "
     )
-    add_body_p("• V is the set of transit nodes: 1 dedicated campus destination (VIT Chennai) and 18 residential suburban origin clusters.")
-    add_body_p("• E is the set of directed road links representing primary transit highways: GST Road (NH 45), OMR IT Expressway, Velachery/Medavakkam Arterial, Inner Ring Road, and the Vandalur-Kelambakkam Main Road.")
+    add_body_p("• V is the set of transit nodes: 1 dedicated campus destination hub (VIT Chennai) and 5 primary arterial suburban origin clusters (Tambaram, Vandalur, Kandigai, Mambakkam, Kelambakkam) in the default view, expandable dynamically on-demand to include 14+ catalog suburbs across Chennai.")
+    add_body_p("• E is the set of directed road links representing primary transit highways: Vandalur-Kelambakkam Main Road spine, GST Road (NH 45), OMR IT Expressway, Velachery/Medavakkam Arterial, and Inner Ring Road connectors.")
     add_body_p("• W: E -> R⁺ represents link weights: distance dist_km(u, v) and travel time t(u, v) in minutes.")
 
     add_body_p(
@@ -242,7 +242,16 @@ def build_report():
         "To allow microsecond-level query speeds during permutation enumeration, FairPool executes Dijkstra's algorithm using a min-heap priority queue to precompute all-pairs shortest paths into a dense distance matrix D[u, v] and time matrix T[u, v]. For |V| nodes and |E| edges, the Dijkstra execution runs in O((|V| + |E|) log |V|). Any point-to-point query is subsequently answered in O(1) time."
     )
 
-    add_heading_2("3.3 Dynamically Movable Pins & Real-Time Graph Synchronization")
+    add_heading_2("3.3 Streamlined Corridor Architecture & Dynamic Node Expansion")
+    add_body_p(
+        "To avoid the visual chaos and cognitive overload of displaying dozens of unassigned pins, FairPool implements a streamlined corridor architecture:",
+        "Clutter-Free Corridor — "
+    )
+    add_body_p("1. Minimalist Default View: The map initializes with only 6 core pins along the Vandalur-Kelambakkam Main Road spine (Tambaram, Vandalur, Kandigai, VIT Chennai, Mambakkam, Kelambakkam). This provides an immediate, clean view of the primary university transit corridor.")
+    add_body_p("2. Dynamic Suburb Expansion: An extensive catalog of 14 additional Chennai suburbs (Medavakkam, Siruseri, Guduvanchery, Velachery, Porur, Chromepet, Navalur, etc.) is held in reserve. When a commuter books or offers a ride from an expanded suburb, the backend dynamically instantiates the node, computes its optimal arterial highway link via POST /api/nodes, and refreshes the live Dijkstra matrices in real time.")
+    add_body_p("3. Custom Landmark Pins: Users can also create arbitrary custom pickup pins by name, which automatically wire into the nearest road segment via geodesic proximity.")
+
+    add_heading_2("3.4 Dynamically Movable Pins & Real-Time Graph Synchronization")
     add_body_p(
         "A major architectural feature implemented in this project is dynamic pin repositioning. Users can drag any suburban pickup pin or the VIT Chennai destination pin across the map canvas. When a pin is dragged:",
         "Interactive Geometry — "
@@ -429,14 +438,17 @@ def build_report():
     # ==================== CHAPTER 7: SYSTEM ARCHITECTURE ====================
     add_heading_1("7. System Architecture & Modern UI Implementation")
     add_heading_2("7.1 Backend Services (FastAPI)")
-    add_body_p("• REST Endpoints: Exposes modular endpoints for road network serialization (/api/network), simulation state (/api/state), commuter request submissions (/api/requests), driver offer submissions (/api/offers), batch solving (/api/match), dynamic pin position updates (/api/nodes/{id}), and comparative benchmark execution (/api/benchmark).")
-    add_body_p("• Domain Verification (FR-1): Pydantic validators strictly verify academic institutional email domains (@vitstudent.ac.in and @vit.ac.in) for student and faculty authentication.")
+    add_body_p("• REST Endpoints: Exposes modular endpoints for road network serialization (/api/network), suburbs catalog discovery (/api/catalog), dynamic node expansion (/api/nodes), simulation state (/api/state), commuter request submissions (/api/requests), driver offer submissions (/api/offers), batch solving (/api/match), dynamic pin position updates (/api/nodes/{id}), and comparative benchmark execution (/api/benchmark).")
+    add_body_p("• Domain Verification (FR-1): Pydantic validators strictly verify academic institutional email domains (@vitstudent.ac.in, @vit.ac.in, @chennai.vit.ac.in) for student and faculty authentication with sanitized recursive error formatting.")
 
     add_heading_2("7.2 Minimalist Frontend (React 19 + TypeScript)")
-    add_body_p("• Single Destination Enforcement: Dedicated exclusively to VIT Chennai on Vandalur-Kelambakkam Main Road. Destination selection in commuter booking forms is locked to VIT Chennai to eliminate multi-destination confusion.")
-    add_body_p("• Dynamically Movable Pins: All 18 suburban pins and the VIT Chennai destination pin feature draggable Leaflet markers with 60 FPS visual line stretching, immediate tooltip feedback, and automatic backend graph synchronization.")
-    add_body_p("• Low-Profile KPI Ribbon: Replaced bloated multi-card bento grids with an elegant 48px stat bar displaying Distance Saved (-35%), Matched Commuters (63%), Gini Detour Equity (0.572), and Dispatched Pools.")
-    add_body_p("• Focused Carpool Manifest: Eliminates multi-tab clutter, focusing exclusively on formed carpool cards with passenger counts, driver IDs, detour minutes, and 1-click Google Maps live driving directions.")
+    add_body_p("• Single Destination Enforcement: Dedicated exclusively to VIT Chennai on Vandalur-Kelambakkam Main Road. Destination selection is locked to VIT Chennai across all commuter booking modalities to guarantee corridor coherence.")
+    add_body_p("• Streamlined 6-Pin Default Corridor: The map initializes with only 6 core arterial pins along the primary Vandalur-Kelambakkam spine (Tambaram, Vandalur, Kandigai, VIT Chennai, Mambakkam, Kelambakkam), ensuring an uncluttered, high-contrast canvas.")
+    add_body_p("• Dynamic Suburb & Landmark Expansion: Commuters can add pins on-demand via the Book / Offer dialog, choosing from 14 reserved Chennai suburbs or placing custom landmark pins that instantly instantiate on the map and wire into the road network.")
+    add_body_p("• Multi-Color Route Highlighting: Each dispatched carpool is rendered in a distinct high-contrast chromatic color from a 12-color palette (Cyan, Orange, Emerald, Violet, Pink, Amber, etc.) with dark casing outlines and matching outer glows, preventing route overlap ambiguity.")
+    add_body_p("• Vehicle Origin Markers & Interactive Legend: Drivers feature a floating vehicle badge (🚗 Car #1, 🚗 Car #2) at their starting suburb. An interactive collapsible legend displays live carpools with direct click-to-focus synchronization.")
+    add_body_p("• Dynamically Movable Pins: All pins remain fluidly draggable at 60 FPS, with real-time recalculation of connecting edges and matched carpool polylines.")
+    add_body_p("• Synchronized Carpool Manifest: Sidebar cards feature color-coded vehicle chips, accent borders, and stop itinerary markers mirroring their exact route on the map canvas.")
 
     # ==================== CHAPTER 8: CONCLUSION ====================
     add_heading_1("8. Conclusion & Future Scope")
@@ -448,8 +460,13 @@ def build_report():
     )
 
     output_path = os.path.join(os.getcwd(), "FairPool_Project_Report.docx")
-    doc.save(output_path)
-    print(f"Report generated successfully at: {output_path}")
+    try:
+        doc.save(output_path)
+        print(f"Report generated successfully at: {output_path}")
+    except PermissionError:
+        alt_path = os.path.join(os.getcwd(), "FairPool_Project_Report_Updated.docx")
+        doc.save(alt_path)
+        print(f"FairPool_Project_Report.docx is currently open in Microsoft Word. Saved updated report to: {alt_path}")
 
 if __name__ == "__main__":
     build_report()
