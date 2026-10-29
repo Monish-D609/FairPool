@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, field_validator
 
 from fairpool.core.models import RiderRequest, DriverOffer, Trip, BatchMatchResult
-from fairpool.core.graph import RoadNetwork, create_default_campus_network
+from fairpool.core.graph import RoadNetwork, create_default_campus_network, EXPANDED_SUBURBS_CATALOG
 from fairpool.algorithms.fairness import FairnessEngine
 from fairpool.algorithms.engine import FairPoolEngine
 from fairpool.algorithms.baselines import NoPoolingBaseline, GreedyNearestPairMatcher
@@ -129,11 +129,66 @@ class UpdateNodeLocation(BaseModel):
     lng: float
 
 
+class CreateNodePayload(BaseModel):
+    id: Optional[str] = None
+    name: str
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    catalog_id: Optional[str] = None
+    connect_to: Optional[str] = None
+
+
 # API Endpoints
 @app.get("/api/network")
 def get_network() -> Dict[str, Any]:
     """Returns road network nodes and edges for map visualization."""
     return road_net.to_dict()
+
+
+@app.get("/api/catalog")
+def get_suburbs_catalog() -> Dict[str, Any]:
+    """Returns Chennai suburbs catalog and whether they are currently rendered on the map."""
+    suburbs = []
+    for cid, data in EXPANDED_SUBURBS_CATALOG.items():
+        suburbs.append({
+            "id": cid,
+            "name": data["name"],
+            "lat": data["lat"],
+            "lng": data["lng"],
+            "is_active": cid in road_net.nodes,
+        })
+    return {"catalog": suburbs}
+
+
+@app.post("/api/nodes")
+def add_node(payload: CreateNodePayload) -> Dict[str, Any]:
+    """Dynamically adds a new suburb or landmark pin to the road network."""
+    if payload.catalog_id and payload.catalog_id in EXPANDED_SUBURBS_CATALOG:
+        loc = road_net.add_suburb_from_catalog(payload.catalog_id)
+        if not loc:
+            raise HTTPException(status_code=400, detail="Failed to add suburb from catalog")
+        return {
+            "message": f"Added {loc.name} to the network",
+            "node": loc.to_dict(),
+            "network": road_net.to_dict(),
+        }
+
+    if payload.lat is None or payload.lng is None:
+        raise HTTPException(status_code=400, detail="Coordinates (lat, lng) are required for custom points")
+
+    node_id = payload.id or payload.name.upper().replace(" ", "_")[:18]
+    loc = road_net.add_custom_location(
+        node_id=node_id,
+        name=payload.name,
+        lat=payload.lat,
+        lng=payload.lng,
+        connect_to=payload.connect_to,
+    )
+    return {
+        "message": f"Added custom node {loc.name}",
+        "node": loc.to_dict(),
+        "network": road_net.to_dict(),
+    }
 
 
 @app.patch("/api/nodes/{node_id}")
@@ -151,7 +206,7 @@ def get_state() -> Dict[str, Any]:
     # Auto-seed if brand new cold start
     if not requests_pool and not offers_pool:
         gen = CommuterDatasetGenerator(road_net, seed=42)
-        reqs, offs = gen.generate_commute_batch(num_requests=25, num_offers=12)
+        reqs, offs = gen.generate_commute_batch(num_requests=12, num_offers=5)
         requests_pool.extend(reqs)
         offers_pool.extend(offs)
         for o in offs:
@@ -178,6 +233,10 @@ def get_state() -> Dict[str, Any]:
 @app.post("/api/requests")
 def submit_request(req_in: CreateRiderRequest) -> Dict[str, Any]:
     """Submits a single rider request with instant route validation (FR-1, FR-4)."""
+    # Auto-expand suburb from catalog if requested origin was not yet added
+    if req_in.origin_id not in road_net.nodes and req_in.origin_id in EXPANDED_SUBURBS_CATALOG:
+        road_net.add_suburb_from_catalog(req_in.origin_id)
+
     if req_in.origin_id not in road_net.nodes or req_in.destination_id not in road_net.nodes:
         raise HTTPException(status_code=400, detail="Invalid origin or destination node ID")
 
@@ -214,6 +273,10 @@ def cancel_request(request_id: str) -> Dict[str, Any]:
 @app.post("/api/offers")
 def submit_offer(offer_in: CreateDriverOffer) -> Dict[str, Any]:
     """Submits a single driver offer (FR-1, FR-5)."""
+    # Auto-expand suburb from catalog if requested origin was not yet added
+    if offer_in.origin_id not in road_net.nodes and offer_in.origin_id in EXPANDED_SUBURBS_CATALOG:
+        road_net.add_suburb_from_catalog(offer_in.origin_id)
+
     if offer_in.origin_id not in road_net.nodes or offer_in.destination_id not in road_net.nodes:
         raise HTTPException(status_code=400, detail="Invalid origin or destination node ID")
 

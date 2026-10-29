@@ -147,6 +147,34 @@ export async function resetSystem() {
   return res.json()
 }
 
+export async function fetchSuburbsCatalog(): Promise<{
+  catalog: { id: string; name: string; lat: number; lng: number; is_active: boolean }[]
+}> {
+  const res = await fetch(`${BASE_URL}/api/catalog`)
+  if (!res.ok) throw new Error(`Failed to fetch catalog: ${res.statusText}`)
+  return res.json()
+}
+
+export async function addNetworkNode(payload: {
+  id?: string
+  name: string
+  lat?: number
+  lng?: number
+  catalog_id?: string
+  connect_to?: string
+}) {
+  const res = await fetch(`${BASE_URL}/api/nodes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(formatErrorMessage(err, 'Failed to add pickup point'))
+  }
+  return res.json()
+}
+
 export function getExportCsvUrl(): string {
   return `${BASE_URL}/api/export-csv`
 }

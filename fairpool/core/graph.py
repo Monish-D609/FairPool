@@ -192,93 +192,192 @@ class RoadNetwork:
             "edges": edges,
         }
 
+    def add_custom_location(
+        self,
+        node_id: str,
+        name: str,
+        lat: float,
+        lng: float,
+        connect_to: Optional[str] = None,
+        speed_kmh: float = 45.0,
+        is_campus_hub: bool = False,
+    ) -> Location:
+        """Adds a new location node dynamically and connects it into the network."""
+        if node_id in self.nodes:
+            self.update_node_position(node_id, lat, lng)
+            return self.nodes[node_id]
+
+        loc = self.add_node(node_id, name, lat, lng, is_campus_hub=is_campus_hub)
+
+        target = connect_to if (connect_to and connect_to in self.nodes) else None
+        if not target:
+            # Find closest existing node
+            best_dist = float("inf")
+            for other_id, other_loc in self.nodes.items():
+                if other_id == node_id:
+                    continue
+                d = haversine_distance_km(lat, lng, other_loc.lat, other_loc.lng)
+                if d < best_dist:
+                    best_dist = d
+                    target = other_id
+
+        if target:
+            self.add_edge(node_id, target, speed_kmh=speed_kmh, bidirectional=True)
+
+        self._distance_matrix.clear()
+        self._time_matrix.clear()
+        self.compute_all_pairs()
+        return loc
+
+    def add_suburb_from_catalog(self, suburb_id: str) -> Optional[Location]:
+        """Adds an authorized Chennai suburb from the catalog to the live network."""
+        entry = EXPANDED_SUBURBS_CATALOG.get(suburb_id)
+        if not entry:
+            return None
+        return self.add_custom_location(
+            node_id=suburb_id,
+            name=entry["name"],
+            lat=entry["lat"],
+            lng=entry["lng"],
+            connect_to=entry.get("connect_to"),
+            speed_kmh=entry.get("speed_kmh", 45.0),
+        )
+
+
+# Catalog of extended Chennai suburbs available to be added when commuters book or offer rides
+EXPANDED_SUBURBS_CATALOG: Dict[str, Dict] = {
+    "PERUNGALATHUR": {
+        "name": "Perungalathur Gateway",
+        "lat": 12.9050,
+        "lng": 80.0880,
+        "connect_to": "VANDALUR",
+        "speed_kmh": 50.0,
+    },
+    "GUDUVANCHERY": {
+        "name": "Guduvanchery GST Hub",
+        "lat": 12.8450,
+        "lng": 80.0620,
+        "connect_to": "VANDALUR",
+        "speed_kmh": 50.0,
+    },
+    "URAPAKKAM": {
+        "name": "Urapakkam Suburb",
+        "lat": 12.8680,
+        "lng": 80.0720,
+        "connect_to": "VANDALUR",
+        "speed_kmh": 50.0,
+    },
+    "CHROMEPET": {
+        "name": "Chromepet GST Road",
+        "lat": 12.9516,
+        "lng": 80.1462,
+        "connect_to": "TAMBARAM",
+        "speed_kmh": 45.0,
+    },
+    "CAMP_ROAD": {
+        "name": "Camp Road / Selaiyur",
+        "lat": 12.9150,
+        "lng": 80.1420,
+        "connect_to": "TAMBARAM",
+        "speed_kmh": 45.0,
+    },
+    "MEDAVAKKAM": {
+        "name": "Medavakkam Suburb Center",
+        "lat": 12.9171,
+        "lng": 80.1923,
+        "connect_to": "MAMBAKKAM",
+        "speed_kmh": 45.0,
+    },
+    "SITHALAPAKKAM": {
+        "name": "Sithalapakkam Suburb",
+        "lat": 12.8850,
+        "lng": 80.1870,
+        "connect_to": "MAMBAKKAM",
+        "speed_kmh": 45.0,
+    },
+    "SIRUSERI": {
+        "name": "Siruseri SIPCOT IT Park",
+        "lat": 12.8270,
+        "lng": 80.2190,
+        "connect_to": "KELAMBAKKAM",
+        "speed_kmh": 45.0,
+    },
+    "NAVALUR": {
+        "name": "Navalur OMR Junction",
+        "lat": 12.8520,
+        "lng": 80.2260,
+        "connect_to": "KELAMBAKKAM",
+        "speed_kmh": 50.0,
+    },
+    "SHOLINGANALLUR": {
+        "name": "Sholinganallur Junction",
+        "lat": 12.9010,
+        "lng": 80.2279,
+        "connect_to": "MAMBAKKAM",
+        "speed_kmh": 45.0,
+    },
+    "VELACHERY": {
+        "name": "Velachery Transit Hub",
+        "lat": 12.9800,
+        "lng": 80.2200,
+        "connect_to": "TAMBARAM",
+        "speed_kmh": 40.0,
+    },
+    "PORUR": {
+        "name": "Porur Tollway & Lake",
+        "lat": 13.0382,
+        "lng": 80.1565,
+        "connect_to": "TAMBARAM",
+        "speed_kmh": 45.0,
+    },
+    "GUINDY": {
+        "name": "Guindy Kathipara Interchange",
+        "lat": 13.0067,
+        "lng": 80.2030,
+        "connect_to": "TAMBARAM",
+        "speed_kmh": 45.0,
+    },
+    "ANNA_NAGAR": {
+        "name": "Anna Nagar Tower Circle",
+        "lat": 13.0850,
+        "lng": 80.2100,
+        "connect_to": "TAMBARAM",
+        "speed_kmh": 40.0,
+    },
+}
+
 
 def create_default_campus_network() -> RoadNetwork:
     """
-    Creates the Chennai Metropolitan City-to-Campus Commuter Corridor,
+    Creates the default streamlined 6-point Chennai City-to-Campus Corridor,
     centered strictly around VIT Chennai on the Vandalur-Kelambakkam Main Road.
-    Single Central Campus Destination:
-      - VIT Chennai (Vandalur-Kelambakkam Main Road) - 12.84085, 80.15393
-    Surrounding Residential Suburban Origins across Chennai:
-      - Kandigai, Mambakkam, Vandalur, Kelambakkam, Siruseri, Navalur,
-        Guduvanchery, Urapakkam, Perungalathur, Tambaram, Camp Road,
-        Sithalapakkam, Medavakkam, Sholinganallur, Chromepet, Velachery,
-        Guindy, Porur, Anna Nagar.
+    Exact 6 nodes in default view:
+      1. VIT Chennai (Campus Hub) - 12.84085, 80.15393
+      2. Kandigai Junction - 12.8480, 80.1415
+      3. Mambakkam Junction - 12.8360, 80.1780
+      4. Vandalur Crescent / Zoo - 12.8913, 80.0812
+      5. Kelambakkam Bus Terminus - 12.7915, 80.2210
+      6. Tambaram Railway Gateway - 12.9249, 80.1000
     """
-    net = RoadNetwork(avg_speed_kmh=38.0)
+    net = RoadNetwork(avg_speed_kmh=42.0)
 
-    # 1. The Sole Dedicated Campus Destination Hub (VIT Chennai)
+    # 1. Sole Destination/Campus Hub
     net.add_node("VIT_CHENNAI", "VIT Chennai (Vandalur-Kelambakkam Rd)", 12.84085, 80.15393, is_campus_hub=True)
 
-    # 2. Immediate Vandalur-Kelambakkam Main Road Corridor Suburbs
+    # 2. Vandalur-Kelambakkam Main Road Core Commute Origins (West & East)
     net.add_node("KANDIGAI", "Kandigai Junction", 12.8480, 80.1415, is_campus_hub=False)
     net.add_node("MAMBAKKAM", "Mambakkam Junction", 12.8360, 80.1780, is_campus_hub=False)
     net.add_node("VANDALUR", "Vandalur Crescent / Zoo", 12.8913, 80.0812, is_campus_hub=False)
     net.add_node("KELAMBAKKAM", "Kelambakkam Bus Terminus", 12.7915, 80.2210, is_campus_hub=False)
-
-    # 3. South GST Road Residential Corridors (West of VIT)
-    net.add_node("GUDUVANCHERY", "Guduvanchery GST Hub", 12.8450, 80.0620, is_campus_hub=False)
-    net.add_node("URAPAKKAM", "Urapakkam Suburb", 12.8680, 80.0720, is_campus_hub=False)
-    net.add_node("PERUNGALATHUR", "Perungalathur Gateway", 12.9050, 80.0880, is_campus_hub=False)
     net.add_node("TAMBARAM", "Tambaram Railway Gateway", 12.9249, 80.1000, is_campus_hub=False)
-    net.add_node("CHROMEPET", "Chromepet GST Road", 12.9516, 80.1462, is_campus_hub=False)
 
-    # 4. East Tambaram & Camp Road Connectors
-    net.add_node("CAMP_ROAD", "Camp Road / Selaiyur", 12.9150, 80.1420, is_campus_hub=False)
-
-    # 5. Medavakkam & Sithalapakkam Northern Arterial
-    net.add_node("SITHALAPAKKAM", "Sithalapakkam Suburb", 12.8850, 80.1870, is_campus_hub=False)
-    net.add_node("MEDAVAKKAM", "Medavakkam Suburb Center", 12.9171, 80.1923, is_campus_hub=False)
-
-    # 6. OMR IT Expressway Corridor (East of VIT)
-    net.add_node("SIRUSERI", "Siruseri SIPCOT IT Park", 12.8270, 80.2190, is_campus_hub=False)
-    net.add_node("NAVALUR", "Navalur OMR Junction", 12.8520, 80.2260, is_campus_hub=False)
-    net.add_node("SHOLINGANALLUR", "Sholinganallur Junction", 12.9010, 80.2279, is_campus_hub=False)
-
-    # 7. Metropolitan Chennai Urban Clusters
-    net.add_node("VELACHERY", "Velachery Transit Hub", 12.9800, 80.2200, is_campus_hub=False)
-    net.add_node("GUINDY", "Guindy Kathipara Interchange", 13.0067, 80.2030, is_campus_hub=False)
-    net.add_node("PORUR", "Porur Tollway & Lake", 13.0382, 80.1565, is_campus_hub=False)
-    net.add_node("ANNA_NAGAR", "Anna Nagar Tower Circle", 13.0850, 80.2100, is_campus_hub=False)
-
-    # Road Network Edges:
-    # 1. Vandalur-Kelambakkam Main Road Spine (Exact highway connecting through VIT Chennai)
+    # Core arterial corridor connections
+    net.add_edge("TAMBARAM", "VANDALUR", speed_kmh=50.0)
     net.add_edge("VANDALUR", "KANDIGAI", speed_kmh=50.0)
     net.add_edge("KANDIGAI", "VIT_CHENNAI", speed_kmh=50.0)
     net.add_edge("VIT_CHENNAI", "MAMBAKKAM", speed_kmh=50.0)
     net.add_edge("MAMBAKKAM", "KELAMBAKKAM", speed_kmh=50.0)
-    net.add_edge("MAMBAKKAM", "SIRUSERI", speed_kmh=45.0)
-    net.add_edge("KELAMBAKKAM", "SIRUSERI", speed_kmh=45.0)
-
-    # 2. GST Road Corridor (South-West)
-    net.add_edge("GUDUVANCHERY", "URAPAKKAM", speed_kmh=50.0)
-    net.add_edge("URAPAKKAM", "VANDALUR", speed_kmh=50.0)
-    net.add_edge("VANDALUR", "PERUNGALATHUR", speed_kmh=50.0)
-    net.add_edge("PERUNGALATHUR", "TAMBARAM", speed_kmh=45.0)
-    net.add_edge("TAMBARAM", "CHROMEPET", speed_kmh=45.0)
-    net.add_edge("CHROMEPET", "GUINDY", speed_kmh=45.0)
-
-    # 3. Camp Road / Selaiyur Arterials
-    net.add_edge("TAMBARAM", "CAMP_ROAD", speed_kmh=40.0)
-    net.add_edge("CAMP_ROAD", "KANDIGAI", speed_kmh=45.0)
-    net.add_edge("CAMP_ROAD", "MEDAVAKKAM", speed_kmh=40.0)
-
-    # 4. Sithalapakkam / Medavakkam Arterial
-    net.add_edge("MEDAVAKKAM", "SITHALAPAKKAM", speed_kmh=40.0)
-    net.add_edge("SITHALAPAKKAM", "MAMBAKKAM", speed_kmh=45.0)
-
-    # 5. OMR IT Expressway Corridor
-    net.add_edge("SIRUSERI", "NAVALUR", speed_kmh=50.0)
-    net.add_edge("NAVALUR", "SHOLINGANALLUR", speed_kmh=50.0)
-    net.add_edge("SHOLINGANALLUR", "MEDAVAKKAM", speed_kmh=40.0)
-    net.add_edge("SHOLINGANALLUR", "VELACHERY", speed_kmh=45.0)
-
-    # 6. Central & West Chennai
-    net.add_edge("VELACHERY", "GUINDY", speed_kmh=35.0)
-    net.add_edge("PORUR", "GUINDY", speed_kmh=40.0)
-    net.add_edge("PORUR", "TAMBARAM", speed_kmh=45.0)
-    net.add_edge("ANNA_NAGAR", "PORUR", speed_kmh=40.0)
-    net.add_edge("ANNA_NAGAR", "GUINDY", speed_kmh=35.0)
 
     net.compute_all_pairs()
     return net
+

@@ -16,7 +16,7 @@ def test_api_network():
     data = res.json()
     assert "nodes" in data
     assert "edges" in data
-    assert len(data["nodes"]) >= 12
+    assert len(data["nodes"]) >= 6
 
 
 def test_api_domain_verification_fr1():

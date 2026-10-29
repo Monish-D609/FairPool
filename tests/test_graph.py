@@ -17,7 +17,7 @@ def test_haversine_symmetry():
 
 def test_default_campus_network_connectivity():
     net = create_default_campus_network()
-    assert len(net.nodes) >= 12
+    assert len(net.nodes) >= 6
 
     # Verify every node is reachable from VIT Chennai
     hub_id = "VIT_CHENNAI"

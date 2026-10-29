@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import type { LocationNode } from '../types'
-import { submitRiderRequest, submitDriverOffer } from '../api'
-import { X, UserPlus, Car, MapPin, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { submitRiderRequest, submitDriverOffer, fetchSuburbsCatalog, addNetworkNode } from '../api'
+import { X, UserPlus, Car, MapPin, AlertCircle, CheckCircle2, Plus } from 'lucide-react'
 
 interface CommuterModalProps {
   isOpen: boolean
@@ -10,6 +10,7 @@ interface CommuterModalProps {
   initialOrigin?: LocationNode | null
   initialDestination?: LocationNode | null
   onSuccess: () => void
+  onNodeAdded?: () => void
 }
 
 export const CommuterModal: React.FC<CommuterModalProps> = ({
@@ -19,6 +20,7 @@ export const CommuterModal: React.FC<CommuterModalProps> = ({
   initialOrigin,
   initialDestination: _initialDestination,
   onSuccess,
+  onNodeAdded,
 }) => {
   const [activeTab, setActiveTab] = useState<'rider' | 'driver'>('rider')
   const [riderId, setRiderId] = useState('student@vitstudent.ac.in')
@@ -32,22 +34,72 @@ export const CommuterModal: React.FC<CommuterModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
-  // Sync origin/destination when modal opens or map node selection changes
+  // Expandable Suburbs Catalog
+  const [catalog, setCatalog] = useState<{ id: string; name: string; is_active: boolean }[]>([])
+  const [isAddingCustom, setIsAddingCustom] = useState(false)
+  const [customName, setCustomName] = useState('')
+
+  // Sync origin/destination and load catalog when modal opens
   useEffect(() => {
     if (isOpen) {
       if (initialOrigin && initialOrigin.id !== 'VIT_CHENNAI') {
         setOriginId(initialOrigin.id)
       }
       setDestId('VIT_CHENNAI')
-      // Reset feedback messages on each open
       setErrorMsg(null)
       setSuccessMsg(null)
+
+      fetchSuburbsCatalog()
+        .then((res) => setCatalog(res.catalog || []))
+        .catch(() => setCatalog([]))
     }
   }, [isOpen, initialOrigin])
 
   if (!isOpen) return null
 
   const suburbs = nodes.filter((n) => !n.is_campus_hub)
+  const activeNodeIds = new Set(nodes.map((n) => n.id))
+  const unaddedSuburbs = catalog.filter((c) => !activeNodeIds.has(c.id))
+
+  const handleAddCatalogSuburb = async (catId: string) => {
+    setErrorMsg(null)
+    setIsSubmitting(true)
+    try {
+      const res = await addNetworkNode({ catalog_id: catId, name: catId })
+      onNodeAdded?.()
+      setOriginId(catId)
+      setSuccessMsg(`Added pin "${res.node.name}" to the map corridor!`)
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to add suburb to corridor')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleAddCustomPoint = async () => {
+    if (!customName.trim()) return
+    setErrorMsg(null)
+    setIsSubmitting(true)
+    try {
+      // Offset slightly from VIT Chennai (12.84085, 80.15393)
+      const offsetLat = (Math.random() - 0.5) * 0.05
+      const offsetLng = (Math.random() - 0.5) * 0.05
+      const res = await addNetworkNode({
+        name: customName.trim(),
+        lat: 12.84085 + offsetLat,
+        lng: 80.15393 + offsetLng,
+      })
+      onNodeAdded?.()
+      setOriginId(res.node.id)
+      setIsAddingCustom(false)
+      setCustomName('')
+      setSuccessMsg(`Added new pin "${res.node.name}" to the map!`)
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to add custom point')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -178,22 +230,74 @@ export const CommuterModal: React.FC<CommuterModalProps> = ({
           {/* Origin & Destination */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Pickup Origin (City Suburb)
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-slate-300">
+                  Pickup Origin (City Suburb)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsAddingCustom(!isAddingCustom)}
+                  className="text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center gap-0.5"
+                >
+                  <Plus size={10} />
+                  <span>Custom Pin</span>
+                </button>
+              </div>
+
               <select
                 value={originId}
-                onChange={(e) => setOriginId(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value
+                  if (val.startsWith('CATALOG:')) {
+                    handleAddCatalogSuburb(val.replace('CATALOG:', ''))
+                  } else {
+                    setOriginId(val)
+                  }
+                }}
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
               >
-                <optgroup label="Chennai Residential Suburbs">
+                <optgroup label="Active Corridor Pins">
                   {suburbs.map((n) => (
                     <option key={n.id} value={n.id}>
-                      {n.name}
+                      📍 {n.name}
                     </option>
                   ))}
                 </optgroup>
+                {unaddedSuburbs.length > 0 && (
+                  <optgroup label="➕ Click to Add More Chennai Suburbs to Map">
+                    {unaddedSuburbs.map((c) => (
+                      <option key={c.id} value={`CATALOG:${c.id}`}>
+                        ➕ Add {c.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
+
+              {isAddingCustom && (
+                <div className="mt-2 p-2 bg-slate-950 border border-cyan-500/40 rounded-xl space-y-1.5 animate-fade-in">
+                  <span className="text-[10px] font-semibold text-cyan-300 block">
+                    Add Custom Landmark Pin
+                  </span>
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      value={customName}
+                      onChange={(e) => setCustomName(e.target.value)}
+                      placeholder="e.g. SRM Gate / Vandalur Zoo"
+                      className="flex-1 px-2 py-1 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddCustomPoint}
+                      disabled={!customName.trim() || isSubmitting}
+                      className="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-bold rounded-lg transition disabled:opacity-50"
+                    >
+                      Add Pin
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>

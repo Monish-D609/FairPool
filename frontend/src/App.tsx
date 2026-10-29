@@ -77,8 +77,8 @@ export const App: React.FC = () => {
     setIsGenerating(true)
     try {
       await generateSampleBatch({
-        num_requests: 25,
-        num_offers: 10,
+        num_requests: 12,
+        num_offers: 5,
         direction: 'INBOUND',
         seed: Math.floor(Math.random() * 1000),
       })
@@ -115,10 +115,9 @@ export const App: React.FC = () => {
 
   // Action: Reset System
   const handleReset = async () => {
-    if (confirm('Reset commute simulation and matching pool?')) {
+    if (confirm('Reset commute simulation to default 6-node corridor?')) {
       await resetSystem()
-      const st = await fetchState()
-      setState(st)
+      await loadInitialData()
       setSelectedTripId(null)
     }
   }
@@ -315,10 +314,8 @@ export const App: React.FC = () => {
         nodes={nodes}
         initialOrigin={pickedOrigin}
         initialDestination={pickedDest}
-        onSuccess={async () => {
-          const st = await fetchState()
-          setState(st)
-        }}
+        onSuccess={loadInitialData}
+        onNodeAdded={loadInitialData}
       />
 
       <BenchmarkModal
