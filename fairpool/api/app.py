@@ -450,14 +450,15 @@ def export_anonymized_csv() -> Response:
 
 @app.post("/api/reset")
 def reset_system() -> Dict[str, Any]:
-    """Resets all simulation pools, history, and fairness ledger."""
-    global latest_match_result
+    """Resets all simulation pools, history, fairness ledger, and road network to default 6 pins."""
+    global road_net, latest_match_result
+    road_net = create_default_campus_network()
     requests_pool.clear()
     offers_pool.clear()
     latest_match_result = None
     match_history.clear()
     fairness_ledger.reset()
-    return {"message": "System state successfully reset"}
+    return {"message": "System state successfully reset to default 6 corridor pins"}
 
 
 # Serve static web files if public or web directory exists
