@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import type { LocationNode, NetworkEdge, Trip } from '../types'
-import { ExternalLink, Compass, Layers, Move } from 'lucide-react'
+import { ExternalLink, Compass, Layers, Move, Info, ChevronDown } from 'lucide-react'
 
 // Fix default Leaflet icon paths
 delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -72,6 +72,7 @@ export const GoogleMapVisualizer: React.FC<GoogleMapVisualizerProps> = ({
   const tripsLayerRef = useRef<L.LayerGroup | null>(null)
 
   const [activeLayer, setActiveLayer] = useState<GoogleLayerType>('roadmap')
+  const [isLegendExpanded, setIsLegendExpanded] = useState(true)
 
   // Keep references to live polylines & markers for fluid dynamic dragging
   const markersMapRef = useRef<Map<string, L.Marker>>(new Map())
@@ -487,28 +488,133 @@ export const GoogleMapVisualizer: React.FC<GoogleMapVisualizerProps> = ({
       {/* Map DOM Element */}
       <div ref={mapContainerRef} className="h-full w-full min-h-[480px]" />
 
-      {/* Bottom Floating Minimal Legend */}
-      <div className="absolute bottom-3 left-3 z-20 pointer-events-auto flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-800 text-xs text-slate-300 shadow-lg">
-        <div className="flex items-center gap-1.5 text-[11px]">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
-          <span>🎓 VIT Chennai (Sole Destination)</span>
+      {/* Bottom Floating Interactive Legend */}
+      <div className="absolute bottom-3 left-3 z-20 pointer-events-auto bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-xl p-2.5 shadow-xl text-xs max-w-[310px]">
+        {/* Header with collapse toggle */}
+        <div
+          className="flex items-center justify-between gap-3 cursor-pointer select-none"
+          onClick={() => setIsLegendExpanded(!isLegendExpanded)}
+        >
+          <div className="flex items-center gap-1.5 font-bold text-white text-[11px] uppercase tracking-wider">
+            <Info size={12} className="text-cyan-400" />
+            <span>Map Legend & Route Key</span>
+          </div>
+          <button
+            type="button"
+            className="text-slate-400 hover:text-white p-0.5"
+            aria-label="Toggle legend"
+          >
+            <ChevronDown
+              size={13}
+              className={`transition-transform duration-200 ${
+                isLegendExpanded ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
         </div>
-        <span className="text-slate-600">|</span>
-        <div className="flex items-center gap-1.5 text-[11px]">
-          <span className="w-2 h-2 rounded-full bg-red-400 inline-block"></span>
-          <span>📍 Pickup (Drag pin)</span>
-        </div>
-        {trips.length > 0 && (
-          <>
-            <span className="text-slate-600">|</span>
-            <button
-              onClick={handleOpenInGoogleMaps}
-              className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 hover:underline ml-1"
-            >
-              <span>Live Directions</span>
-              <ExternalLink size={10} />
-            </button>
-          </>
+
+        {isLegendExpanded && (
+          <div className="mt-2.5 space-y-2 border-t border-slate-800/80 pt-2 text-[11px]">
+            {/* Network Lines & Route Meaning */}
+            <div>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                Route & Line Meanings
+              </span>
+              <div className="space-y-1.5 pl-0.5">
+                <div className="flex items-center gap-2">
+                  <svg width="22" height="6" className="shrink-0">
+                    <line
+                      x1="0"
+                      y1="3"
+                      x2="22"
+                      y2="3"
+                      stroke="#64748B"
+                      strokeWidth="2"
+                      strokeDasharray="3 3"
+                    />
+                  </svg>
+                  <span className="text-slate-300">
+                    <strong className="text-slate-200">Road Network:</strong> Arterial transit highway
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <svg width="22" height="6" className="shrink-0">
+                    <line
+                      x1="0"
+                      y1="3"
+                      x2="22"
+                      y2="3"
+                      stroke="#06B6D4"
+                      strokeWidth="2.5"
+                      strokeDasharray="5 3"
+                    />
+                  </svg>
+                  <span className="text-slate-300">
+                    <strong className="text-cyan-400">Carpool Pool:</strong> Dispatched multi-stop trip
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <svg width="22" height="8" className="shrink-0">
+                    <line
+                      x1="0"
+                      y1="4"
+                      x2="22"
+                      y2="4"
+                      stroke="#38BDF8"
+                      strokeWidth="6"
+                      opacity="0.45"
+                    />
+                    <line
+                      x1="0"
+                      y1="4"
+                      x2="22"
+                      y2="4"
+                      stroke="#0284C7"
+                      strokeWidth="2.5"
+                    />
+                  </svg>
+                  <span className="text-slate-300">
+                    <strong className="text-blue-300">Selected Route:</strong> Focused pool (click to inspect)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Pins Key */}
+            <div className="border-t border-slate-800/80 pt-1.5">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                Pin Types
+              </span>
+              <div className="grid grid-cols-2 gap-1.5 pl-0.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block shrink-0"></span>
+                  <span className="text-emerald-300 font-medium">🎓 VIT Chennai</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block shrink-0"></span>
+                  <span className="text-slate-300">📍 Pickup (Movable)</span>
+                </div>
+              </div>
+            </div>
+
+            {trips.length > 0 && (
+              <div className="border-t border-slate-800/80 pt-1.5 flex items-center justify-between">
+                <span className="text-[10px] text-cyan-400 font-mono">
+                  {trips.length} active pool(s)
+                </span>
+                <button
+                  type="button"
+                  onClick={handleOpenInGoogleMaps}
+                  className="text-[10px] text-white hover:text-cyan-300 flex items-center gap-1 bg-blue-600/30 hover:bg-blue-600/50 px-2 py-0.5 rounded border border-blue-500/30 transition"
+                >
+                  <span>Google Maps</span>
+                  <ExternalLink size={10} />
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>
