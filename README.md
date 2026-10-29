@@ -13,7 +13,7 @@
 
 ## 📌 1. The Real-World Problem & Impact
 
-The daily peak-hour commute from residential suburbs across a metropolis into major educational campuses and research corridors (e.g. commuters from Tambaram, Porur, Anna Nagar, Velachery, or OMR heading into IIT Madras, Anna University, or Tidel Park) produces severe traffic bottlenecks, parking crises, and carbon emissions.
+The daily peak-hour commute from residential suburbs across Chennai (e.g. commuters from Tambaram, Chromepet, Vandalur, Porur, Anna Nagar, Velachery, Medavakkam, or OMR heading into VIT Chennai on Vandalur-Kelambakkam Main Road) produces severe traffic bottlenecks, parking crises, and carbon emissions.
 
 While commercial ride-hailing services route individuals at high cost, informal carpooling collapsed because **altruistic drivers disproportionately absorb detours**, leading to rapid driver burnout.
 
@@ -115,7 +115,7 @@ FairPool features an interactive dashboard designed with modern UI standards:
 - **Style:** Bento Box Modular Grid with Data-Dense Operations Control.
 - **Palette:** Transportation Slate-Navy (`#080D1A`, `#0F172A`, `#141E34`) with Electric Blue (`#3B82F6`) routes, Emerald Green (`#10B981`) savings indicators, and Amber warning highlights.
 - **Typography:** `Outfit` (headings) + `DM Sans` (body) + `Fira Code` (metrics & computational matrices).
-- **Interactive Visualizer:** Real-time HTML5 Canvas rendering campus hubs (Admin, CS Block, Engineering Quad, Library) and commuter ingress gateways (East Metro, Tech Park, Riverdale).
+- **Interactive Visualizer:** Real-time Google Maps Engine rendering the single dedicated campus destination (**VIT Chennai on Vandalur-Kelambakkam Main Road**) and dynamically movable suburban commuter pins across Chennai.
 - **Live Inspection:** Clicking any matched trip highlights its trajectory, shows exact passenger pickup/drop-off sequences, and displays estimated arrival times ($T + \Delta t$).
 
 ---
