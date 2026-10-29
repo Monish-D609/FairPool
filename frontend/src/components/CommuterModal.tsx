@@ -56,26 +56,29 @@ export const CommuterModal: React.FC<CommuterModalProps> = ({
     setIsSubmitting(true)
 
     try {
+      const targetOrigin = originId || suburbs[0]?.id || 'TAMBARAM'
+      const targetDest = destId || 'VIT_CHENNAI'
+
       if (activeTab === 'rider') {
         await submitRiderRequest({
-          rider_id: riderId,
-          origin_id: originId,
-          destination_id: destId,
+          rider_id: riderId.trim(),
+          origin_id: targetOrigin,
+          destination_id: targetDest,
           earliest_departure: 0.0,
           latest_arrival: 45.0,
           max_detour_ratio: maxDetourRatio,
         })
-        setSuccessMsg(`Rider request for ${riderId} registered!`)
+        setSuccessMsg(`Rider request for ${riderId.trim()} registered!`)
       } else {
         await submitDriverOffer({
-          driver_id: driverId,
-          origin_id: originId,
-          destination_id: destId,
+          driver_id: driverId.trim(),
+          origin_id: targetOrigin,
+          destination_id: targetDest,
           departure_time: 5.0,
           capacity: capacity,
           max_driver_detour_min: maxDriverDetourMin,
         })
-        setSuccessMsg(`Driver offer for ${driverId} registered with ${capacity} seats!`)
+        setSuccessMsg(`Driver offer for ${driverId.trim()} registered with ${capacity} seats!`)
       }
 
       setTimeout(() => {

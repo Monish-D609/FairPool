@@ -39,7 +39,18 @@ app.add_middleware(
 )
 
 # Allowed Institutional Email Domains (FR-1)
-ALLOWED_DOMAINS = ["vit.ac.in", "vitstudent.ac.in", "campus.edu", "university.ac.in", "office.org", "fairpool.local"]
+ALLOWED_DOMAINS = [
+    "vit.ac.in",
+    "vitstudent.ac.in",
+    "chennai.vit.ac.in",
+    "campus.edu",
+    "university.ac.in",
+    "office.org",
+    "fairpool.local",
+    "gmail.com",
+    "outlook.com",
+    "yahoo.com",
+]
 
 # Global Simulation & System State
 road_net: RoadNetwork = create_default_campus_network()
@@ -54,8 +65,9 @@ match_history: List[BatchMatchResult] = []
 
 def validate_institutional_email(email: str) -> bool:
     """Verifies that an email belongs to an allowed organization domain (FR-1)."""
+    email = email.strip()
     if "@" not in email:
-        # Allow internal mock IDs like rider_u001
+        # Allow internal mock IDs like rider_u001 or simple handles
         return True
     domain = email.split("@")[-1].lower()
     return any(domain == d or domain.endswith("." + d) for d in ALLOWED_DOMAINS)

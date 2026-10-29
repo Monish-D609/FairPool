@@ -27,6 +27,20 @@ export async function fetchState(): Promise<SystemState> {
   return res.json()
 }
 
+function formatErrorMessage(errData: any, defaultMsg: string): string {
+  if (!errData) return defaultMsg
+  if (typeof errData.detail === 'string') return errData.detail
+  if (Array.isArray(errData.detail) && errData.detail.length > 0) {
+    const item = errData.detail[0]
+    return item.msg || item.message || JSON.stringify(item)
+  }
+  if (errData.detail && typeof errData.detail === 'object') {
+    return errData.detail.msg || errData.detail.message || JSON.stringify(errData.detail)
+  }
+  if (typeof errData.message === 'string') return errData.message
+  return defaultMsg
+}
+
 export async function submitRiderRequest(data: {
   rider_id: string
   origin_id: string
@@ -42,7 +56,7 @@ export async function submitRiderRequest(data: {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(err.detail || 'Failed to submit rider request')
+    throw new Error(formatErrorMessage(err, 'Failed to submit rider request'))
   }
   return res.json()
 }
@@ -62,7 +76,7 @@ export async function submitDriverOffer(data: {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(err.detail || 'Failed to submit driver offer')
+    throw new Error(formatErrorMessage(err, 'Failed to submit driver offer'))
   }
   return res.json()
 }
